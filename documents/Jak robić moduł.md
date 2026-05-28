@@ -29,7 +29,6 @@ Otwórz wybrany plik szablonu (np. `module2.py`) i dostosuj go do założeń swo
   def tile_subtitle(cls) -> str:
       return "(Krótki opis, np. GeoTracks)"
   ```
-
 - **Slajdy prezentacyjne (`slide_texts`):** Nadpisz metodę klasy `slide_texts()`, zwracając listę 3-4 zdań wprowadzających użytkownika w temat analizowanych danych:
   ```python
   @classmethod
@@ -40,7 +39,6 @@ Otwórz wybrany plik szablonu (np. `module2.py`) i dostosuj go do założeń swo
           "Trzeci slajd.",
       ]
   ```
-
 - **Analiza danych w `analyze()`:** Nadpisz tę metodę, aby parsowała odpowiednie pliki JSON z pobranego archiwum Facebooka i zwracała wyniki w postaci słownika (np. podsumowanie, listy, liczby).
 - **Zawartość Paneli Wynikowych:** Zaprogramuj metody `panel_1()`, `panel_2()`, `panel_3()` oraz `panel_4()`. Wykorzystaj w nich dane z analizy (`self.data`) i wyświetl je za pomocą gotowych widżetów (tabel, karty KPI lub wykresów) opisanych poniżej.
 
