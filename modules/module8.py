@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Słowa Klucze"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,13 +32,13 @@ class Module(BaseModule):
         nouns = self.data.get("top_nouns") or [
             "muzyka", "polityka", "podróże", "sport"
         ]
-        self.add_list(0, nouns, title="Najpopularniejsze rzeczowniki")
+        self.add_table(nouns, title="Najpopularniejsze rzeczowniki", columns=["Rzeczownik"])
 
     def panel_2(self) -> None:
         adjectives = self.data.get("top_adjectives") or [
             "ważny", "nowy", "ciekawy", "śmieszny"
         ]
-        self.add_list(1, adjectives, title="Najpopularniejsze przymiotniki")
+        self.add_table(adjectives, title="Najpopularniejsze przymiotniki", columns=["Przymiotnik"])
 
     def panel_3(self) -> None:
         categories = self.data.get("topic_categories") or {
@@ -48,7 +47,7 @@ class Module(BaseModule):
             "Sport": 9,
             "Finanse": 7,
         }
-        self.add_bar_chart(2, categories, title="Kategorie tematyczne")
+        self.add_bar_chart(categories, title="Kategorie tematyczne")
 
     def panel_4(self) -> None:
         tag_scores = self.data.get("tag_scores") or {
@@ -57,7 +56,7 @@ class Module(BaseModule):
             "film": 11,
             "podróże": 14,
         }
-        self.add_sorted_list(3, tag_scores, title="Waga tagów", reverse=True)
+        self.add_table(list(tag_scores.items()), title="Waga tagów", columns=["Tag", "Waga"])
 
 
 if __name__ == "__main__":

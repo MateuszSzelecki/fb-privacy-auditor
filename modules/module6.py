@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Archwium Emocji"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,7 +32,7 @@ class Module(BaseModule):
         top_reactions = self.data.get("top_reactions") or [
             "Lubię to", "Super", "Przykro mi", "Wrrr"
         ]
-        self.add_list(0, top_reactions, title="Najczęściej używane reakcje")
+        self.add_table(top_reactions, title="Najczęściej używane reakcje", columns=["Reakcja"])
 
     def panel_2(self) -> None:
         emotion_by_day = self.data.get("emotion_by_day") or {
@@ -45,7 +44,7 @@ class Module(BaseModule):
             "Sob": 10,
             "Niedz": 8,
         }
-        self.add_bar_chart(1, emotion_by_day, title="Aktywność emocjonalna wg dnia tygodnia")
+        self.add_bar_chart(emotion_by_day, title="Aktywność emocjonalna wg dnia tygodnia")
 
     def panel_3(self) -> None:
         reaction_trend = self.data.get("reaction_trend") or {
@@ -53,7 +52,7 @@ class Module(BaseModule):
             "2023-04": 55,
             "2023-05": 38,
         }
-        self.add_line_chart(2, reaction_trend, title="Trendy reakcji w czasie")
+        self.add_line_chart(reaction_trend, title="Trendy reakcji w czasie")
 
     def panel_4(self) -> None:
         categories = self.data.get("categories") or {
@@ -61,7 +60,7 @@ class Module(BaseModule):
             "Nostalgia": 17,
             "Radość": 12,
         }
-        self.add_pie_chart(3, categories, title="Profil emocjonalny")
+        self.add_pie_chart(categories, title="Profil emocjonalny")
 
 
 if __name__ == "__main__":

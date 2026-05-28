@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Cyfrowy Zegar"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,7 +32,7 @@ class Module(BaseModule):
         active_windows = self.data.get("active_windows") or [
             "21:00-23:00", "08:00-09:00", "14:00-15:00"
         ]
-        self.add_list(0, active_windows, title="Najczęstsze okna aktywności")
+        self.add_table(active_windows, title="Najczęstsze okna aktywności", columns=["Okno aktywności"])
 
     def panel_2(self) -> None:
         hour_distribution = self.data.get("hour_distribution") or {
@@ -43,7 +42,7 @@ class Module(BaseModule):
             "18": 28,
             "22": 22,
         }
-        self.add_bar_chart(1, hour_distribution, title="Aktywność wg godzin")
+        self.add_bar_chart(hour_distribution, title="Aktywność wg godzin")
 
     def panel_3(self) -> None:
         timeline = self.data.get("timeline") or {
@@ -51,7 +50,7 @@ class Module(BaseModule):
             "2023-06-02": 17,
             "2023-06-03": 9,
         }
-        self.add_line_chart(2, timeline, title="Aktywność w wybranym okresie")
+        self.add_line_chart(timeline, title="Aktywność w wybranym okresie")
 
     def panel_4(self) -> None:
         weekday_activity = self.data.get("weekday_activity") or {
@@ -63,7 +62,7 @@ class Module(BaseModule):
             "Sob": 11,
             "Niedz": 9,
         }
-        self.add_sorted_list(3, weekday_activity, title="Najaktywniejsze dni tygodnia", reverse=True)
+        self.add_table(list(weekday_activity.items()), title="Najaktywniejsze dni tygodnia", columns=["Dzień", "Aktywność"])
 
 
 if __name__ == "__main__":

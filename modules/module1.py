@@ -10,7 +10,6 @@ from typing import Any, Dict, Optional
 from .module_template import BaseModule
 
 class Module(BaseModule):
-    title = "Cień Reklamowy"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -18,7 +17,6 @@ class Module(BaseModule):
             "Sprawdzamy dopasowania pomiędzy danymi kontaktowymi a zewnętrznymi listami reklamodawców.",
             "Szacujemy liczbę firm, które mogły wykorzystać Twój e-mail lub numer telefonu.",
             "Analizujemy liczbę kliknięć reklam związanych z wykrytymi dopasowaniami.",
-            "W Twoim przypadku ...",
         ]
 
     @classmethod
@@ -30,27 +28,98 @@ class Module(BaseModule):
         return "(AdShadow)"
 
     def panel_1(self) -> None:
-        top_companies = self.data.get("top_companies") or [
-            "Firma A",
-            "Firma B",
-            "Firma C",
+        raw_companies = self.data.get("top_companies") or [
+            "Spotify",
+            "Uber",
+            "Tinder",
+            "Netflix",
+            "Allegro"
         ]
-        self.add_list(0, top_companies, title="Najbardziej prawdopodobne firmy")
+        
+        # Słownik z przykładowymi szczegółami dla znanych marek
+        company_details = {
+            "Spotify": ("Usługi strumieniowe / Muzyka", "Bardzo wysokie", "Adres e-mail", "18"),
+            "Uber": ("Transport i logistyka", "Wysokie", "Numer telefonu", "12"),
+            "Tinder": ("Dating & social networking", "Wysokie", "Lista kontaktów", "9"),
+            "Netflix": ("Rozrywka / VOD", "Średnie", "Adres e-mail", "15"),
+            "Allegro": ("E-commerce / Zakupy", "Bardzo wysokie", "Adres e-mail & Tel", "24"),
+        }
+        
+        table_rows = []
+        for item in raw_companies:
+            if isinstance(item, (list, tuple)):
+                table_rows.append(item)
+            elif isinstance(item, str):
+                if item in company_details:
+                    table_rows.append((item,) + company_details[item])
+                else:
+                    # Generowanie deterministycznych danych dla innych nazw firm
+                    h = sum(ord(c) for c in item)
+                    industries = ["E-commerce", "Marketing/PR", "Finanse", "Usługi IT", "Rozrywka"]
+                    probabilities = ["Bardzo wysokie", "Wysokie", "Średnie"]
+                    sources = ["Adres e-mail", "Numer telefonu", "Zewnętrzny partner"]
+                    
+                    industry = industries[h % len(industries)]
+                    prob = probabilities[h % len(probabilities)]
+                    src = sources[h % len(sources)]
+                    camps = str((h % 15) + 3)
+                    
+                    table_rows.append((item, industry, prob, src, camps))
+            else:
+                table_rows.append(item)
+
+        self.add_table(
+            table_rows,
+            title="Najbardziej prawdopodobne firmy",
+            columns=["Firma", "Branża", "Prawdopodobieństwo", "Źródło danych", "Liczba kampanii"]
+        )
 
     def panel_2(self) -> None:
-        company_counts = self.data.get("company_counts") or {"Firma A": 5, "Firma B": 3, "Firma C": 1}
-        self.add_sorted_list(1, company_counts, title="Liczba dopasowań (posortowane)", reverse=True)
+        company_counts = self.data.get("company_counts") or {
+            "Spotify": 8,
+            "Uber": 5,
+            "Tinder": 3,
+            "Netflix": 2,
+            "Allegro": 1
+        }
+        
+        categories = {
+            "Spotify": "Rozrywka",
+            "Uber": "Medyczna/Transport",
+            "Tinder": "Social Media",
+            "Netflix": "Rozrywka",
+            "Allegro": "E-commerce"
+        }
+        
+        table_rows = []
+        for company, count in company_counts.items():
+            cat = categories.get(company, "Inne")
+            # Deterministyczna liczba dni/tygodni temu
+            h = sum(ord(c) for c in company)
+            days = (h % 14) + 1
+            last_seen = f"{days} dni temu" if days < 7 else f"{days // 7} tyg. temu"
+            table_rows.append((company, count, cat, last_seen))
+            
+        self.add_table(
+            table_rows,
+            title="Liczba dopasowań (posortowane)",
+            columns=["Firma", "Dopasowania", "Kategoria", "Ostatnie wykrycie"]
+        )
 
     def panel_3(self) -> None:
-        pie_data = {
-            "Email": int(self.data.get("email_matches", self.data.get("external_matches", 5))),
-            "Phone": int(self.data.get("phone_matches", 2)),
-        }
-        self.add_pie_chart(2, pie_data, title="Typy dopasowań")
+        email_matches = int(self.data.get("email_matches", self.data.get("external_matches", 5)))
+        phone_matches = int(self.data.get("phone_matches", 2))
+        total_matches = email_matches + phone_matches
+        
+        self.add_kpi_card(
+            value=str(total_matches),
+            title="Suma Dopasowań Danych",
+            subtitle=f"Twój e-mail dopasowano {email_matches} razy, a numer telefonu {phone_matches} razy."
+        )
 
     def panel_4(self) -> None:
         clicks_by_month = self.data.get("clicks_by_month") or {"Jan": 3, "Feb": 5, "Mar": 10}
-        self.add_bar_chart(3, clicks_by_month, title="Kliknięcia reklam (przybliżone)")
+        self.add_bar_chart(clicks_by_month, title="Kliknięcia reklam (przybliżone)")
 
 
 if __name__ == "__main__":

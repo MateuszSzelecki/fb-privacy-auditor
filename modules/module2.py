@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Geotropy"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,7 +32,7 @@ class Module(BaseModule):
         locations = self.data.get("top_locations") or [
             "Dom", "Praca", "Kawiarnia", "Siłownia"
         ]
-        self.add_list(0, locations, title="Najczęstsze lokalizacje")
+        self.add_table(locations, title="Najczęstsze lokalizacje", columns=["Lokalizacja"])
 
     def panel_2(self) -> None:
         location_counts = self.data.get("location_counts") or {
@@ -42,7 +41,7 @@ class Module(BaseModule):
             "Kawiarnia": 42,
             "Siłownia": 28,
         }
-        self.add_sorted_list(1, location_counts, title="Liczba wizyt w lokalizacjach", reverse=True)
+        self.add_table(list(location_counts.items()), title="Liczba wizyt w lokalizacjach", columns=["Lokalizacja", "Wizyty"])
 
     def panel_3(self) -> None:
         source_counts = self.data.get("source_counts") or {
@@ -50,7 +49,7 @@ class Module(BaseModule):
             "Powiadomienia": 9,
             "Zdjęcia Messenger": 11,
         }
-        self.add_pie_chart(2, source_counts, title="Źródła danych lokalizacyjnych")
+        self.add_pie_chart(source_counts, title="Źródła danych lokalizacyjnych")
 
     def panel_4(self) -> None:
         visits_by_day = self.data.get("visits_by_day") or {
@@ -62,7 +61,7 @@ class Module(BaseModule):
             "Sob": 10,
             "Niedz": 5,
         }
-        self.add_line_chart(3, visits_by_day, title="Aktywność lokalizacyjna w tygodniu")
+        self.add_line_chart(visits_by_day, title="Aktywność lokalizacyjna w tygodniu")
 
 
 if __name__ == "__main__":

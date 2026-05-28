@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Widmo Messengera"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,7 +32,7 @@ class Module(BaseModule):
         deleted_messages = self.data.get("deleted_messages") or [
             "Usunięta rozmowa z Karoliną", "Cofnięta wiadomość do Adama"
         ]
-        self.add_list(0, deleted_messages, title="Usunięte/wygasłe wiadomości")
+        self.add_table(deleted_messages, title="Usunięte/wygasłe wiadomości", columns=["Wiadomość"])
 
     def panel_2(self) -> None:
         hidden_senders = self.data.get("hidden_senders") or {
@@ -41,7 +40,7 @@ class Module(BaseModule):
             "Spam Bot": 8,
             "Inny kontakt": 3,
         }
-        self.add_sorted_list(1, hidden_senders, title="Ukryte wiadomości według nadawcy", reverse=True)
+        self.add_table(list(hidden_senders.items()), title="Ukryte wiadomości według nadawcy", columns=["Nadawca", "Wiadomości"])
 
     def panel_3(self) -> None:
         folder_counts = self.data.get("folder_counts") or {
@@ -49,7 +48,7 @@ class Module(BaseModule):
             "Inne": 6,
             "Usunięte": 9,
         }
-        self.add_pie_chart(2, folder_counts, title="Rozkład ukrytych wiadomości")
+        self.add_pie_chart(folder_counts, title="Rozkład ukrytych wiadomości")
 
     def panel_4(self) -> None:
         removal_trend = self.data.get("removal_trend") or {
@@ -57,7 +56,7 @@ class Module(BaseModule):
             "2022": 12,
             "2023": 8,
         }
-        self.add_line_chart(3, removal_trend, title="Trend usuwania wiadomości")
+        self.add_line_chart(removal_trend, title="Trend usuwania wiadomości")
 
 
 if __name__ == "__main__":

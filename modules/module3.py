@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Matryca Relacji"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,7 +32,7 @@ class Module(BaseModule):
         friend_rank = self.data.get("friend_rank") or [
             "Alicja - 98 pkt", "Bartek - 82 pkt", "Kasia - 74 pkt"
         ]
-        self.add_list(0, friend_rank, title="Ranking najbliższych kontaktów")
+        self.add_table(friend_rank, title="Ranking najbliższych kontaktów", columns=["Kontakt"])
 
     def panel_2(self) -> None:
         interaction_counts = self.data.get("interaction_counts") or {
@@ -42,20 +41,20 @@ class Module(BaseModule):
             "Kasia": 810,
             "Piotr": 24,
         }
-        self.add_sorted_list(1, interaction_counts, title="Liczba interakcji", reverse=True)
+        self.add_table(list(interaction_counts.items()), title="Liczba interakcji", columns=["Kontakt", "Interakcje"])
 
     def panel_3(self) -> None:
         reaction_counts = self.data.get("reaction_counts") or {
             "Rozmowy rozpoczęte przez Ciebie": 120,
             "Rozmowy rozpoczęte przez drugą stronę": 76,
         }
-        self.add_bar_chart(2, reaction_counts, title="Kto zaczyna rozmowy")
+        self.add_bar_chart(reaction_counts, title="Kto zaczyna rozmowy")
 
     def panel_4(self) -> None:
         zombie_contacts = self.data.get("zombie_contacts") or [
             "Tomek - ostatnia rozmowa 2019", "Magda - brak kontaktu 2 lata", "Paweł - brak odpowiedzi"
         ]
-        self.add_list(3, zombie_contacts, title="Zombie-znajomi")
+        self.add_table(zombie_contacts, title="Zombie-znajomi", columns=["Kontakt"])
 
 
 if __name__ == "__main__":
