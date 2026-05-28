@@ -3,7 +3,7 @@
 - Musisz mieć przypisane 2 Issue.
 - Pobierz dane ze swojego fb na których będziesz mógł testować.
 - Tworzysz plik który dziedziczy po klasie bazowej.
-- Każdy moduł zaczyna się od kilku krótkich slajdów, które zawierają informację o tym co udało Wam się dowiedzieć o konkretnych danych, które analizujecie. Slajdy są generowane automatycznie. Musie w pliku swojego modułu dodać mapę stringów `slides`, każdy nowy element w tej tablicy to nowy slajd z tekstem który napiszecie.
+- Każdy moduł zaczyna się od kilku krótkich slajdów, które zawierają informację o tym co udało Wam się dowiedzieć o konkretnych danych, które analizujecie. Slajdy są generowane automatycznie. Musicie w pliku swojego modułu dodać mapę stringów `slides`, każdy nowy element w tej tablicy to nowy slajd z tekstem który napiszecie.
 - Ostatni element musi zawierać tekst "W Twoim przypadku ...".
 - Po nim wyświetli się wynik analizy odpowiednich danych.
 - Możemy dać zarówno teksty z wynikami analizy, wykresy kolumnowe, kołowe i liniowe.
