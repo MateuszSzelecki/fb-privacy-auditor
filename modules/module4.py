@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Cyfrowy Biom"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,7 +32,7 @@ class Module(BaseModule):
         devices = self.data.get("devices") or [
             "Samsung Galaxy S10", "Windows 11 laptop", "iPad Air"
         ]
-        self.add_list(0, devices, title="Zidentyfikowane urządzenia")
+        self.add_table(devices, title="Zidentyfikowane urządzenia", columns=["Urządzenie"])
 
     def panel_2(self) -> None:
         os_counts = self.data.get("os_counts") or {
@@ -41,7 +40,7 @@ class Module(BaseModule):
             "Windows": 5,
             "iOS": 3,
         }
-        self.add_bar_chart(1, os_counts, title="Systemy operacyjne")
+        self.add_bar_chart(os_counts, title="Systemy operacyjne")
 
     def panel_3(self) -> None:
         browser_counts = self.data.get("browser_counts") or {
@@ -49,13 +48,13 @@ class Module(BaseModule):
             "Safari": 4,
             "Firefox": 3,
         }
-        self.add_bar_chart(2, browser_counts, title="Przeglądarki używane podczas logowań")
+        self.add_bar_chart(browser_counts, title="Przeglądarki używane podczas logowań")
 
     def panel_4(self) -> None:
         fingerprints = self.data.get("fingerprints") or [
             "User-Agent: Chrome 118", "MAC: xx:xx:xx:xx", "SSID: domowa_siec"
         ]
-        self.add_list(3, fingerprints, title="Elementy odcisku palca urządzenia")
+        self.add_table(fingerprints, title="Elementy odcisku palca urządzenia", columns=["Element"])
 
 
 if __name__ == "__main__":

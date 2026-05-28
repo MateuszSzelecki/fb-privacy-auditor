@@ -1,7 +1,6 @@
 """Bazowy szablon modułu dla folderu modules.
 
 Każdy moduł powinien dziedziczyć po BaseModule i definiować:
-- title
 - slide_texts()           # lista tekstów slajdów
 - tile_title()            # nazwa kafla
 - tile_subtitle()         # tekst pod nagłówkiem kafla
@@ -13,22 +12,19 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Any, Dict, List, Optional
 
-class BaseModule(ttk.Frame):
-    title = "Base Module"
-    description = "Opis modułu"
-    slides: List[str] = []
 
+class BaseModule(ttk.Frame):
     @classmethod
     def slide_texts(cls) -> List[str]:
-        return list(cls.slides)
+        return []
 
     @classmethod
     def tile_title(cls) -> str:
-        return cls.title
+        return cls.__name__
 
     @classmethod
     def tile_subtitle(cls) -> str:
-        return cls.description
+        return ""
 
     def panel_1(self) -> None:
         return None
@@ -46,6 +42,17 @@ class BaseModule(ttk.Frame):
         super().__init__(parent, **kwargs)
         self.data = data or {}
         self.slide_index = 0
+
+        # Pobieramy slajdy zdefiniowane w podklasie
+        raw_slides = list(self.slide_texts())
+        # Automatycznie upewniamy się, że ostatni slajd to "W Twoim przypadku ..."
+        if raw_slides:
+            if raw_slides[-1] != "W Twoim przypadku ...":
+                raw_slides.append("W Twoim przypadku ...")
+        else:
+            raw_slides = ["W Twoim przypadku ..."]
+        self.slides = raw_slides
+
         self.analysis = self.analyze()
         self.build_ui()
         self.bind_all("<space>", self.on_space)
@@ -68,7 +75,7 @@ class BaseModule(ttk.Frame):
         self.slide_container.columnconfigure(0, weight=1)
         self.slide_container.rowconfigure(0, weight=1)
 
-        slides = self.slide_texts()
+        slides = self.slides
         self.slide_text = tk.Label(
             self.slide_container,
             text=slides[0] if slides else "Brak slajdów.",
@@ -83,14 +90,14 @@ class BaseModule(ttk.Frame):
         self.slide_hint = ttk.Label(self, text="Naciśnij SPACJĘ, aby przejść dalej", font=("Helvetica", 10))
         self.slide_hint.grid(row=2, column=0, sticky="e", pady=(0, 10))
 
-        # result_frame startuje w row=3, ale zaraz to zmienimy w show_analysis
-        self.result_frame = tk.Frame(self)
+        # result_frame startuje w row=3, wyzerowane ramki i grubości podświetlenia
+        self.result_frame = tk.Frame(self, bd=0, highlightthickness=0)
         self.result_frame.grid(row=3, column=0, sticky="nsew")
         self.result_frame.grid_remove()
 
         # Detale na sam dół ramki wynikowej
         self.result_details = ttk.Frame(self.result_frame)
-        self.result_details.pack(side="bottom", fill="x", pady=(10, 0))
+        self.result_details.pack(side="bottom", fill="x", pady=0)
         self.result_details.columnconfigure(0, weight=1)
 
         details = self.analysis.get("details", {})
@@ -104,15 +111,21 @@ class BaseModule(ttk.Frame):
             detail_label.grid(row=row_index, column=0, sticky="w", pady=(0, 2))
 
         # Kontener na kafle zajmuje CAŁĄ pozostałą przestrzeń w result_frame
-        self.panels_container = ttk.Frame(self.result_frame)
-        self.panels_container.pack(side="top", fill="both", expand=True, pady=4, padx=4)
+        # Zamiana na tk.Frame z bd=0 aby całkowicie pozbyć się ukrytych marginesów ttk
+        self.panels_container = tk.Frame(self.result_frame, bd=0, highlightthickness=0)
+        self.panels_container.pack(side="top", fill="both", expand=True, pady=0, padx=0)
         
-        self.panels_container.columnconfigure(0, weight=1, uniform="moje_panele")
-        self.panels_container.columnconfigure(1, weight=1, uniform="moje_panele")
-        self.panels_container.rowconfigure(0, weight=1, uniform="moje_panele")
-        self.panels_container.rowconfigure(1, weight=1, uniform="moje_panele")
+        self.panels_container.columnconfigure(0, weight=1, uniform="moje_kolumny")
+        self.panels_container.columnconfigure(1, weight=1, uniform="moje_kolumny")
+        self.panels_container.rowconfigure(0, weight=1, uniform="moje_wiersze")
+        self.panels_container.rowconfigure(1, weight=1, uniform="moje_wiersze")
 
         self.panels = []  # type: List[tk.Frame]
+        
+        # --- Ustawienie 12 pikseli na środku ---
+        gap = 12 
+        half_gap = gap // 2 # 6 pikseli na kafel
+
         for r in range(2):
             for c in range(2):
                 panel = tk.Frame(
@@ -120,8 +133,17 @@ class BaseModule(ttk.Frame):
                     bg="white",
                     highlightbackground="black",
                     highlightthickness=1,
+                    bd=0 # Zabezpieczenie przed dodatkową ramką
                 )
-                panel.grid(row=r, column=c, sticky="nsew", padx=4, pady=4)
+                
+                # Asymetryczny padding dla kolumn: z lewej / z prawej
+                pad_x = (0, half_gap) if c == 0 else (half_gap, 0)
+                
+                # Asymetryczny padding dla wierszy: z góry / z dołu
+                pad_y = (0, half_gap) if r == 0 else (half_gap, 0)
+
+                panel.grid(row=r, column=c, sticky="nsew", padx=pad_x, pady=pad_y)
+                
                 panel.pack_propagate(False)
                 panel.grid_propagate(False)
                 self.panels.append(panel)
@@ -134,35 +156,98 @@ class BaseModule(ttk.Frame):
 
     def _add_title_to_panel(self, panel: tk.Widget, title: Optional[str]) -> None:
         if title:
-            lbl = tk.Label(panel, text=title, font=("Helvetica", 12), bg="white", anchor="w")
-            lbl.pack(fill="x", anchor="nw", pady=(0, 6))
+            lbl = tk.Label(panel, text=title, font=("Helvetica", 14, "bold"), bg="white", anchor="w")
+            lbl.pack(fill="x", anchor="nw", padx=(4, 0), pady=(4, 6))
 
-    def add_list(self, panel_index: int, items: List[str], title: Optional[str] = None) -> None:
+    def add_table(self, panel_index: Optional[int] = None, rows=None, title: Optional[str] = None, columns: Optional[List[str]] = None) -> None:
+        if panel_index is None:
+            panel_index = getattr(self, "_current_panel_index", 0)
+        elif not isinstance(panel_index, int):
+            if rows is None:
+                rows = panel_index
+            else:
+                columns = title
+                title = rows
+                rows = panel_index
+            panel_index = getattr(self, "_current_panel_index", 0)
+
         panel = self.panels[panel_index]
         self._add_title_to_panel(panel, title)
 
-        # scrollable text area
-        container = tk.Frame(panel, bg="white")
-        container.pack(fill="both", expand=True)
-        scrollbar = ttk.Scrollbar(container, orient="vertical")
-        text_widget = tk.Text(container, wrap="word", bg="white", bd=0)
-        scrollbar.config(command=text_widget.yview)
-        text_widget.config(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        text_widget.pack(side="left", fill="both", expand=True)
-        text_widget.insert("1.0", "\n".join(str(x) for x in items))
-        text_widget.config(state="disabled")
+        container = tk.Frame(panel, bg="white", bd=0, highlightthickness=0)
+        container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
 
-    def add_sorted_list(self, panel_index: int, items, title: Optional[str] = None, reverse: bool = False) -> None:
-        panel = self.panels[panel_index]
-        self._add_title_to_panel(panel, title)
-        if isinstance(items, dict):
-            sorted_items = sorted(items.items(), key=lambda kv: kv[1], reverse=reverse)
-            lines = [f"{k}: {v}" for k, v in sorted_items]
-        else:
-            sorted_items = sorted(items, reverse=reverse)
-            lines = [str(x) for x in sorted_items]
-        self.add_list(panel_index, lines)
+        if isinstance(rows, dict):
+            rows = list(rows.items())
+
+        if columns is None:
+            if rows and isinstance(rows[0], dict):
+                columns = list(rows[0].keys())
+            elif rows and isinstance(rows[0], (list, tuple)):
+                columns = [f"Kolumna {i + 1}" for i in range(len(rows[0]))]
+            else:
+                columns = ["Wartość"]
+
+        tree = ttk.Treeview(container, columns=columns, show="headings", selectmode="none")
+        vsb = ttk.Scrollbar(container, orient="vertical", command=tree.yview)
+        hsb = ttk.Scrollbar(container, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        def parse_value(value):
+            try:
+                return float(str(value).replace(",", "."))
+            except Exception:
+                return str(value).lower()
+
+        def sort_treeview_column(col, reverse=False):
+            items = [(parse_value(tree.set(k, col)), k) for k in tree.get_children("")]
+            items.sort(reverse=reverse, key=lambda x: x[0])
+            for index, (_, item) in enumerate(items):
+                tree.move(item, "", index)
+            tree._sort_reverse[col] = not reverse
+
+            for heading_col in columns:
+                arrow = ""
+                if heading_col == col:
+                    arrow = " ▼" if reverse else " ▲"
+                tree.heading(
+                    heading_col,
+                    text=tree._heading_texts[heading_col] + arrow,
+                    anchor="center",
+                    command=lambda col=heading_col: sort_treeview_column(col, tree._sort_reverse.get(col, False)),
+                )
+
+        tree._sort_reverse = {}
+        tree._heading_texts = {column: column for column in columns}
+
+        for column in columns:
+            tree.heading(
+                column,
+                text=column,
+                anchor="center",
+                command=lambda col=column: sort_treeview_column(col, tree._sort_reverse.get(col, False)),
+            )
+            tree.column(column, anchor="center", stretch=True, width=140, minwidth=60)
+
+        tree.tag_configure("oddrow", background="white")
+        tree.tag_configure("evenrow", background="#f5f5f5")
+
+        if rows:
+            for row_index, row in enumerate(rows):
+                if isinstance(row, dict):
+                    values = [str(row.get(col, "")) for col in columns]
+                elif isinstance(row, (list, tuple)):
+                    values = [str(v) for v in row]
+                else:
+                    values = [str(row)]
+                tag = "evenrow" if row_index % 2 else "oddrow"
+                tree.insert("", "end", values=values, tags=(tag,))
+
+        tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
 
     def _plot_with_matplotlib(self, panel: tk.Widget, fig) -> None:
         try:
@@ -175,13 +260,23 @@ class BaseModule(ttk.Frame):
         canvas.draw()
         widget = canvas.get_tk_widget()
         try:
-            widget.configure(bg="white")
+            widget.configure(bg="white", bd=0, highlightthickness=0)
             fig.patch.set_facecolor("white")
         except Exception:
             pass
-        widget.pack(fill="both", expand=True)
+        widget.pack(fill="both", expand=True, padx=4, pady=(0, 4))
 
-    def add_pie_chart(self, panel_index: int, data: Dict[str, float], title: Optional[str] = None) -> None:
+    def add_pie_chart(self, panel_index: Optional[int] = None, data: Dict[str, float] = None, title: Optional[str] = None) -> None:
+        if panel_index is None:
+            panel_index = getattr(self, "_current_panel_index", 0)
+        elif not isinstance(panel_index, int):
+            if data is None:
+                data = panel_index
+            else:
+                title = data
+                data = panel_index
+            panel_index = getattr(self, "_current_panel_index", 0)
+
         panel = self.panels[panel_index]
         self._add_title_to_panel(panel, title)
         try:
@@ -193,12 +288,25 @@ class BaseModule(ttk.Frame):
             sizes = list(data.values())
             ax.pie(sizes, labels=labels, autopct="%1.1f%%")
             ax.axis("equal")
+            
+            # pad=0 zmniejsza wewnętrzne marginesy samego wykresu
+            fig.tight_layout(pad=0) 
             self._plot_with_matplotlib(panel, fig)
         except Exception:
             err = ttk.Label(panel, text="Cannot render pie chart", foreground="red")
-            err.pack()
+            err.pack(padx=4, pady=(0, 4))
 
-    def add_bar_chart(self, panel_index: int, data: Dict[str, float], title: Optional[str] = None) -> None:
+    def add_bar_chart(self, panel_index: Optional[int] = None, data: Dict[str, float] = None, title: Optional[str] = None) -> None:
+        if panel_index is None:
+            panel_index = getattr(self, "_current_panel_index", 0)
+        elif not isinstance(panel_index, int):
+            if data is None:
+                data = panel_index
+            else:
+                title = data
+                data = panel_index
+            panel_index = getattr(self, "_current_panel_index", 0)
+
         panel = self.panels[panel_index]
         self._add_title_to_panel(panel, title)
         try:
@@ -209,13 +317,32 @@ class BaseModule(ttk.Frame):
             labels = list(data.keys())
             values = list(data.values())
             ax.bar(labels, values)
-            fig.tight_layout()
+            
+            fig.tight_layout(pad=0.2)
             self._plot_with_matplotlib(panel, fig)
         except Exception:
             err = ttk.Label(panel, text="Cannot render bar chart", foreground="red")
-            err.pack()
+            err.pack(padx=4, pady=(0, 4))
 
-    def add_line_chart(self, panel_index: int, x, y=None, title: Optional[str] = None) -> None:
+    def add_line_chart(self, panel_index: Optional[int] = None, x=None, y=None, title: Optional[str] = None) -> None:
+        if panel_index is None:
+            panel_index = getattr(self, "_current_panel_index", 0)
+        elif not isinstance(panel_index, int):
+            if x is None:
+                x = panel_index
+            elif y is None:
+                if isinstance(x, str):
+                    title = x
+                    x = panel_index
+                else:
+                    y = x
+                    x = panel_index
+            else:
+                title = y
+                y = x
+                x = panel_index
+            panel_index = getattr(self, "_current_panel_index", 0)
+
         panel = self.panels[panel_index]
         self._add_title_to_panel(panel, title)
         try:
@@ -231,14 +358,68 @@ class BaseModule(ttk.Frame):
                 ax.set_xticklabels(labels, rotation=45, ha="right")
             else:
                 ax.plot(x, y)
-            fig.tight_layout()
+                
+            fig.tight_layout(pad=0.2)
             self._plot_with_matplotlib(panel, fig)
         except Exception:
             err = ttk.Label(panel, text="Cannot render line chart", foreground="red")
-            err.pack()
+            err.pack(padx=4, pady=(0, 4))
+
+    def add_kpi_card(
+        self,
+        panel_index: Optional[int] = None,
+        value: str = "",
+        title: Optional[str] = None,
+        subtitle: Optional[str] = None,
+        badge_text: Optional[str] = None,  # Ignorowane (przestarzałe)
+        badge_type: str = "info"            # Ignorowane (przestarzałe)
+    ) -> None:
+        if panel_index is None:
+            panel_index = getattr(self, "_current_panel_index", 0)
+        elif not isinstance(panel_index, int):
+            if value == "":
+                value = panel_index
+            else:
+                subtitle = title
+                title = value
+                value = panel_index
+            panel_index = getattr(self, "_current_panel_index", 0)
+
+        panel = self.panels[panel_index]
+        self._add_title_to_panel(panel, title)
+
+        container = tk.Frame(panel, bg="white", bd=0, highlightthickness=0)
+        container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
+        # Wewnętrzny kontener wyśrodkowany pionowo i poziomo w przestrzeni pod tytułem
+        inner_container = tk.Frame(container, bg="white")
+        inner_container.pack(expand=True)
+
+        # Wyraźnie zwiększona wartość główna KPI dla efektu premium
+        val_lbl = tk.Label(
+            inner_container,
+            text=value,
+            font=("Helvetica", 64, "bold"),
+            bg="white",
+            fg="#111111"
+        )
+        val_lbl.pack(anchor="center")
+
+        # Minimalnie zwiększony komentarz poniżej wartości (z 10 na 12)
+        if subtitle:
+            sub_lbl = tk.Label(
+                inner_container,
+                text=subtitle,
+                font=("Helvetica", 12),
+                bg="white",
+                fg="#555555",
+                wraplength=240,
+                justify="center"
+            )
+            sub_lbl.pack(pady=(6, 0), anchor="center")
 
     def on_space(self, event: tk.Event) -> None:
-        slides = self.slide_texts()
+        slides = self.slides
         if not slides:
             return
 
@@ -253,10 +434,9 @@ class BaseModule(ttk.Frame):
         self.slide_hint.grid_remove()
         self.clear_panels()
 
-        self.panel_1()
-        self.panel_2()
-        self.panel_3()
-        self.panel_4()
+        for idx, panel_method in enumerate([self.panel_1, self.panel_2, self.panel_3, self.panel_4]):
+            self._current_panel_index = idx
+            panel_method()
 
         self.result_frame.grid(row=1, column=0, sticky="nsew")
 
@@ -268,12 +448,58 @@ class BaseModule(ttk.Frame):
         print(f"=== {self.tile_title()} ===")
         print(self.tile_subtitle())
         print("\nSlajdy:")
-        for index, slide in enumerate(self.slide_texts(), start=1):
+        for index, slide in enumerate(self.slides, start=1):
             print(f"{index}. {slide}")
         print("\nWynik analizy:\n")
         print(self.analysis.get("summary", "Brak wyniku analizy."))
 
 
 if __name__ == "__main__":
-    module = BaseModule(tk.Tk())
-    module.run_console()
+    # Testowy blok do uruchamiania modułu jako samodzielnej aplikacji
+    root = tk.Tk()
+    root.geometry("1024x768")
+    root.title("Testowanie układu siatki")
+    
+    # Subklasa do przetestowania wszystkich dostępnych typów prezentacji
+    class TestModule(BaseModule):
+        def panel_1(self) -> None:
+            self.add_table(
+                0,
+                rows=[
+                    ("Spotify", "Wysokie", "18"),
+                    ("Netflix", "Średnie", "12"),
+                    ("Tinder", "Niskie", "5")
+                ],
+                title="Przykładowa Tabela",
+                columns=["Firma", "Ryzyko", "Kampanie"]
+            )
+
+        def panel_2(self) -> None:
+            self.add_kpi_card(
+                1,
+                value="94%",
+                title="Wskaźnik Zagrożenia",
+                subtitle="Profil prywatności użytkownika jest krytycznie naruszony"
+            )
+
+        def panel_3(self) -> None:
+            self.add_line_chart(
+                2,
+                x={"Sty": 10, "Lut": 15, "Mar": 30, "Kwi": 25},
+                title="Wzrost Dopasowań w Czasie"
+            )
+
+        def panel_4(self) -> None:
+            self.add_pie_chart(
+                3,
+                data={"E-mail": 70, "Telefon": 30},
+                title="Źródła Śledzenia Danych"
+            )
+            
+    module = TestModule(root)
+    # Rozszerzenie do absolutnych krawędzi okna przy teście:
+    module.pack(fill="both", expand=True, padx=0, pady=0) 
+    
+    module.show_analysis()
+    
+    root.mainloop()

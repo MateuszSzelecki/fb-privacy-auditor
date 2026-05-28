@@ -5,7 +5,6 @@ from tkinter import ttk, messagebox
 
 from modules.module_template import BaseModule
 
-
 class MainApp:
     def __init__(self, root):
         self.root = root
@@ -25,7 +24,7 @@ class MainApp:
         self.style = ttk.Style(self.root)
         self.style.configure('Tile.TFrame', background='#f0f0f0')
         self.style.configure('TileTitle.TLabel', font=('Helvetica', 20, 'bold'), background='#f0f0f0')
-        self.style.configure('TileSubtitle.TLabel', font=('Helvetica', 14), background='#f0f0f0')
+        self.style.configure('TileSubtitle.TLabel', font=('Helvetica', 16), background='#f0f0f0')
         self.style.configure('Back.TButton', font=('Helvetica', 12), padding=8)
 
         self.tiles_config = self.discover_tile_modules()
@@ -134,7 +133,7 @@ class MainApp:
         header_frame.columnconfigure(0, weight=1)
         header_frame.columnconfigure(1, weight=0)
 
-        ttk.Label(header_frame, text=tile['title'], font=('Helvetica', 24, 'bold')).grid(row=0, column=0, sticky='w')
+        ttk.Label(header_frame, text=tile['title'], font=('Helvetica', 28, 'bold')).grid(row=0, column=0, sticky='w')
         back_button = ttk.Button(header_frame, text='Powrót', command=self.show_tile_grid, style='Back.TButton')
         back_button.grid(row=0, column=1, sticky='e')
 

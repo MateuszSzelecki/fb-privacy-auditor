@@ -10,7 +10,6 @@ from .module_template import BaseModule
 
 
 class Module(BaseModule):
-    title = "Poza Systemem"
 
     @classmethod
     def slide_texts(cls) -> list[str]:
@@ -33,7 +32,7 @@ class Module(BaseModule):
         apps = self.data.get("apps") or [
             "Spotify", "Tinder", "Aplikacja bankowa", "Serwis informacyjny"
         ]
-        self.add_list(0, apps, title="Zewnętrzne aplikacje przesyłające dane")
+        self.add_table(apps, title="Zewnętrzne aplikacje przesyłające dane", columns=["Aplikacja"])
 
     def panel_2(self) -> None:
         app_counts = self.data.get("app_counts") or {
@@ -42,7 +41,7 @@ class Module(BaseModule):
             "Bank": 9,
             "News": 18,
         }
-        self.add_sorted_list(1, app_counts, title="Liczba zdarzeń z aplikacji", reverse=True)
+        self.add_table(list(app_counts.items()), title="Liczba zdarzeń z aplikacji", columns=["Aplikacja", "Zdarzenia"])
 
     def panel_3(self) -> None:
         category_counts = self.data.get("category_counts") or {
@@ -51,10 +50,10 @@ class Module(BaseModule):
             "Finanse": 7,
             "Informacje": 9,
         }
-        self.add_bar_chart(2, category_counts, title="Kategorie aplikacji")
+        self.add_bar_chart(category_counts, title="Kategorie aplikacji")
 
     def panel_4(self) -> None:
-        self.add_pie_chart(3, self.data.get("app_type_share") or {
+        self.add_pie_chart(self.data.get("app_type_share") or {
             "Mobile": 55,
             "Desktop": 30,
             "Inne": 15,
