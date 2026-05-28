@@ -1,0 +1,10 @@
+- Propozycje modulow wraz z opisami sa widoczne w pliku Moduly.md. Ogolnie nie wiem czy wszystkie sa mozliwe, bo AI generowalo. Zweryfikuj to.
+- Mozesz przypisac sie do modułu poprzez zakladke Issues. Możesz też dodać nowy moduł (mozesz napsiac do mnie) do Issues i wtedy sie do niego przypisac. Wazne zeby bylo 9 Issues z kims przypisanym.
+- Musisz mieć przypisane 2 Issue.
+- Pobierz dane ze swojego fb na których będziesz mógł testować.
+- Tworzysz plik który dziedziczy po klasie bazowej.
+- Każdy moduł zaczyna się od kilku krótkich slajdów, które zawierają informację o tym co udało Wam się dowiedzieć o konkretnych danych, które analizujecie. Slajdy są generowane automatycznie. Musie w pliku swojego modułu dodać mapę stringów `slides`, każdy nowy element w tej tablicy to nowy slajd z tekstem który napiszecie.
+- Ostatni element musi zawierać tekst "W Twoim przypadku ...".
+- Po nim wyświetli się wynik analizy odpowiednich danych.
+- Możemy dać zarówno teksty z wynikami analizy, wykresy kolumnowe, kołowe i liniowe.
+- Ważne informacje uwzględnione w analizie: od kiedy zbiera informacje oraz konkretne liczby opisane w jasny, ludzki sposób.
