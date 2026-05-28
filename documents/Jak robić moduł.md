@@ -2,7 +2,7 @@
 
 ### 1. Wybór 2 modułów do realizacji
 Rozpoczynamy od zapoznania się z listą propozycji w pliku Moduly.md. 
-- Wybierz dla siebie **2 moduły**.
+- Wybierz dla siebie **3 moduły**.
 - Przed ostatecznym wyborem zweryfikuj w pobranym archiwum danych z Facebooka, czy pliki powiązane z tymi modułami rzeczywiście istnieją i czy ich analiza jest technicznie wykonalna.
 - **Masz pomysł na własny moduł?** Napisz!
 
@@ -13,7 +13,7 @@ Gdy masz pewność, że wybrane moduły są wykonalne:
 
 ### 3. Rezerwacja plików w projekcie
 Przejdź do folderu `modules/` w kodzie źródłowym:
-- Wybierz dla siebie **2 pliki** spośród istniejących szablonów: module1.py / module2.py / module3.py / module4.py / module5.py / module6.py / module7.py / module8.py / module9.py. 
+- Wybierz dla siebie **3 pliki** spośród istniejących szablonów: module1.py / module2.py / module3.py / module4.py / module5.py / module6.py / module7.py / module8.py / module9.py. 
 - **Ważne:** Przed rozpoczęciem pracy upewnij się (np. na kanale komunikacyjnym zespołu lub w historii commitów), że nikt inny nie pracuje obecnie na tych samych plikach.
 
 ### 4. Modyfikacja i dostosowanie plików modułu
@@ -29,6 +29,7 @@ Otwórz wybrany plik szablonu (np. `module2.py`) i dostosuj go do założeń swo
   def tile_subtitle(cls) -> str:
       return "(Krótki opis, np. GeoTracks)"
   ```
+
 - **Slajdy prezentacyjne (`slide_texts`):** Nadpisz metodę klasy `slide_texts()`, zwracając listę 3-4 zdań wprowadzających użytkownika w temat analizowanych danych:
   ```python
   @classmethod
@@ -39,6 +40,7 @@ Otwórz wybrany plik szablonu (np. `module2.py`) i dostosuj go do założeń swo
           "Trzeci slajd.",
       ]
   ```
+
 - **Analiza danych w `analyze()`:** Nadpisz tę metodę, aby parsowała odpowiednie pliki JSON z pobranego archiwum Facebooka i zwracała wyniki w postaci słownika (np. podsumowanie, listy, liczby).
 - **Zawartość Paneli Wynikowych:** Zaprogramuj metody `panel_1()`, `panel_2()`, `panel_3()` oraz `panel_4()`. Wykorzystaj w nich dane z analizy (`self.data`) i wyświetl je za pomocą gotowych widżetów (tabel, karty KPI lub wykresów) opisanych poniżej.
 
@@ -58,7 +60,6 @@ Klasa bazowa dostarcza 5 zaawansowanych metod pomocniczych do renderowania danyc
       subtitle="Twój profil prywatności jest krytycznie naruszony przez reklamodawców." # Komentarz pod liczbą
   )
   ```
-  *(Zawartość karty jest automatycznie wyśrodkowana w pionie i poziomie, a tytuł zachowuje spójny wygląd z pozostałymi kafelkami).*
 
 ### 2. Tabela (`self.add_table`)
 * **Zastosowanie:** Wyświetlanie szczegółowych list, dopasowań, surowych danych lub rankingów z możliwością sortowania kolumn przez użytkownika.
