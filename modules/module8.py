@@ -132,7 +132,14 @@ class Module(BaseModule):
 
         # get statistics
         # based on Polish (spacy library)
-        pll = spacy.load("pl_core_news_sm")
+        try:
+            pll = spacy.load("pl_core_news_sm")
+        except OSError:
+            # install polish library if needed
+            from spacy.cli.download import download as spacy_download
+            spacy_download("pl_core_news_sm")
+            pll = spacy.load("pl_core_news_sm")
+
         # there could be a lot of messages
         pll.max_length = 3000000 
         # apperently this optimizes the process a little
