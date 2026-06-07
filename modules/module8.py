@@ -3,18 +3,15 @@
 Analizuje teksty postów, komentarzy i wiadomości, aby stworzyć profil zainteresowań.
 """
 
-import tkinter as tk
-from typing import Any, Dict, Optional
-
 from .module_template import BaseModule
-
 
 class Module(BaseModule):
 
     @classmethod
     def slide_texts(cls) -> list[str]:
         return [
-            "Analizujemy teksty Twoich postów, komentarzy i wiadomości pod kątem najczęściej używanych słów.",
+            "Analizujemy teksty Twoich postów i wiadomości",
+            "Szukamy najczęściej używanych słów.",
             "Pomijamy stop-words i skupiamy się na rzeczownikach oraz przymiotnikach.",
         ]
 
@@ -27,34 +24,33 @@ class Module(BaseModule):
         return "(TagCloud)"
 
     def panel_1(self) -> None:
-        nouns = self.data.get("top_nouns") or [
-            "muzyka", "polityka", "podróże", "sport"
-        ]
-        self.add_table(nouns, title="Najpopularniejsze rzeczowniki", columns=["Rzeczownik"])
+        nouns = self.data.get("top_nouns") or ["muzyka", "polityka", "podróże", "sport"]
+        self.add_table(
+            rows=nouns,
+            title="Najpopularniejsze rzeczowniki",
+            columns=["Rzeczownik"]
+        )
 
     def panel_2(self) -> None:
-        adjectives = self.data.get("top_adjectives") or [
-            "ważny", "nowy", "ciekawy", "śmieszny"
-        ]
-        self.add_table(adjectives, title="Najpopularniejsze przymiotniki", columns=["Przymiotnik"])
+        adjectives = self.data.get("top_adjectives") or []
+        self.add_table(
+            rows=adjectives,
+            title="Najpopularniejsze przymiotniki",
+            columns=["Przymiotnik"],
+        )
 
     def panel_3(self) -> None:
-        words = self.data.get("topic_categories") or {
-            "Polityka": 18,
-            "Technologia": 12,
-            "Sport": 9,
-            "Finanse": 7,
-        }
-        self.add_bar_chart(words, title="Podział użytych słów")
+        words = self.data.get("speech_type_categorization") or {}
+        self.add_bar_chart(data=words, title="Podział użytych słów")
 
     def panel_4(self) -> None:
-        tag_scores = self.data.get("top_words") or {
-            "muzyka": 24,
-            "kryptowaluty": 16,
-            "film": 11,
-            "podróże": 14,
-        }
-        self.add_table(list(tag_scores.items()), title="Najpopularniejsze słowa", columns=["Tag", "Waga"])
+        tag_scores = self.data.get("top_words") or {}
+
+        self.add_table(
+            rows=list(tag_scores.items()),
+            title="Najpopularniejsze słowa",
+            columns=["Słowo", "Ilość"],
+        )
 
     def analyze(self) -> dict:
         import json
@@ -74,9 +70,9 @@ class Module(BaseModule):
 
         # check for errors
         if not os.path.exists(post_file_path):
-            return {"summary" : "post file not found"}
+            return {"summary": "post file not found"}
         if not os.path.exists(message_base_path):
-            return {"summary" : "message file not found"}
+            return {"summary": "message file not found"}
 
         # load json data
         with open(post_file_path, "r", encoding="utf-8") as f:
@@ -93,7 +89,7 @@ class Module(BaseModule):
                 # fix encoding issues
                 raw_post = item["post"]
                 try:
-                    clean_post = raw_post.encode('latin1').decode('utf-8')
+                    clean_post = raw_post.encode("latin1").decode("utf-8")
                 except (UnicodeEncodeError, UnicodeDecodeError):
                     clean_post = raw_post
                 stored_text += f" {clean_post}"
@@ -117,16 +113,17 @@ class Module(BaseModule):
                                 raw_msg = msg["content"]
                                 # fix encoding issues
                                 try:
-                                    clean_msg = raw_msg.encode('latin1').decode('utf-8')
+                                    clean_msg = raw_msg.encode("latin1").decode("utf-8")
                                     stored_text += f" {clean_msg}"
                                     msg_count += 1
                                 except:
                                     stored_text += f" {raw_msg}"
 
-
         # prepare used words for operations
         stored_text: str = stored_text.lower()
-        stored_text: str = stored_text.translate(str.maketrans(string.punctuation, " " * len(string.punctuation)))
+        stored_text: str = stored_text.translate(
+            str.maketrans(string.punctuation, " " * len(string.punctuation))
+        )
         words: list[str] = stored_text.split()
         words: list[str] = [w for w in words if len(w) > 3 and w not in ignored_words]
 
@@ -137,35 +134,37 @@ class Module(BaseModule):
         except OSError:
             # install polish library if needed
             from spacy.cli.download import download as spacy_download
+
             spacy_download("pl_core_news_sm")
             pll = spacy.load("pl_core_news_sm")
 
         # there could be a lot of messages
-        pll.max_length = 3000000 
+        pll.max_length = 3000000
+
         # apperently this optimizes the process a little
         with pll.select_pipes(disable=["ner", "parser"]):
             doc = pll(" ".join(words))
+
+        # get nouns and adjectives with spacy
         nouns = [token.text for token in doc if token.pos_ == "NOUN"]
         adjectives = [token.text for token in doc if token.pos_ == "ADJ"]
 
+        # get most frequently used
         top_nouns_counts = Counter(nouns).most_common(100)
         top_adj_counts = Counter(adjectives).most_common(100)
         top_word_counts = Counter(words).most_common(100)
 
         # update data structure
         results = {
-            "top_nouns": [word for word, count in top_nouns_counts],
-            "top_adjectives": [word for word, count in top_adj_counts],
+            "top_nouns": [word for word in top_nouns_counts],
+            "top_adjectives": [word for word in top_adj_counts],
             "top_words": dict(top_word_counts),
-            "topic_categories": {
+            "speech_type_categorization": {
                 "Rzeczowniki": len(set(nouns)),
                 "Przymiotniki": len(set(adjectives)),
             },
-            "summary": f"Przeanalizowano {len(posts_data)} postów i znaleziono {len(nouns)} rzeczowników."
         }
+
+        # add and return data
         self.data.update(results)
         return results
-
-if __name__ == "__main__":
-    module = Module(tk.Tk())
-    module.run_console()
