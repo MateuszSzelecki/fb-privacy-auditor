@@ -5,6 +5,7 @@ kontaktów przesłanych do Facebooka.
 """
 
 import tkinter as tk
+import textwrap
 
 from .module_template import BaseModule
 
@@ -46,35 +47,17 @@ class Module(BaseModule):
         )
 
     def panel_2(self) -> None:
-        company_counts = self.data.get("company_counts") or {
-            "Spotify": 8,
-            "Uber": 5,
-            "Tinder": 3,
-            "Netflix": 2,
-            "Allegro": 1
-        }
+        preferences = self.data.get("preferences") or {}
 
-        categories = {
-            "Spotify": "Rozrywka",
-            "Uber": "Medyczna/Transport",
-            "Tinder": "Social Media",
-            "Netflix": "Rozrywka",
-            "Allegro": "E-commerce"
-        }
-
-        table_rows = []
-        for company, count in company_counts.items():
-            cat = categories.get(company, "Inne")
-            # Deterministyczna liczba dni/tygodni temu
-            h = sum(ord(c) for c in company)
-            days = (h % 14) + 1
-            last_seen = f"{days} dni temu" if days < 7 else f"{days // 7} tyg. temu"
-            table_rows.append((company, count, cat, last_seen))
+        table_rows: list[tuple] = []
+        for label, setting in preferences.items():
+            table_rows.append((label, setting))
 
         self.add_table(
-            table_rows,
-            title="Liczba dopasowań (posortowane)",
-            columns=["Firma", "Dopasowania", "Kategoria", "Ostatnie wykrycie"]
+            rows=table_rows,
+            title="Preferencje reklamowe",
+            columns=["Ustawienie", "Wartość"],
+            col_widths=[800,100]
         )
 
     def panel_3(self) -> None:
@@ -108,9 +91,16 @@ class Module(BaseModule):
         with open(advertisers_info_path, "r", encoding = "utf-8") as f:
             advertisers_data = json.load(f)
 
-        advertisers: list[dict] = []
+        # parse stampled locations
+        with open(
+            os.path.join(ads_data_dir, "ad_preferences.json"), "r", encoding = "utf-8"
+        ) as f:
+            ad_preferences_data = json.load(f)
 
-        # put advertisers in a list
+        advertisers: list[dict] = []
+        preferences: dict = {}
+
+        # handle advertisers data
         label_values: dict = advertisers_data.get("label_values")
         for entry in label_values:
             vec: dict = entry.get("vec")
@@ -135,10 +125,33 @@ class Module(BaseModule):
                     company_name = company.get("value")
 
                 if not company_name: continue
-                advertisers.append(dict({"company_name" : company_name, "source" : source}))
+                advertisers.append({"company_name" : company_name, "source" : source})
+
+        # handle user preferences
+
+        label_values: dict = ad_preferences_data.get("label_values") or {}
+        for entry in label_values:
+            label: str = entry.get("label")
+
+            # fix encoding
+            try: label = label.encode("latin1").decode("utf-8")
+            except: pass
+
+            value: str = entry.get("value")
+            if not value:
+                value: str = ""
+                vec: list = entry.get("vec") or []
+                for item in vec:
+                    value += f"{item}; "
+
+            try: value = value.encode("latin1").decode("utf-8")
+            except: pass
+            if label:
+                preferences[label] = value
 
         res: dict = {
-            "top_companies" : advertisers
+            "top_companies" : advertisers,
+            "preferences" : preferences
         }
 
         self.data.update(res)
