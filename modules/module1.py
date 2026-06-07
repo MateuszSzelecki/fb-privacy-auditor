@@ -61,16 +61,17 @@ class Module(BaseModule):
         )
 
     def panel_3(self) -> None:
-        email_matches = int(self.data.get("email_matches", self.data.get("external_matches", 5)))
-        phone_matches = int(self.data.get("phone_matches", 2))
-        total_matches = email_matches + phone_matches
-
-        self.add_kpi_card(
-            value=str(total_matches),
-            title="Suma Dopasowań Danych",
-            subtitle=f"Twój e-mail dopasowano {email_matches} razy, a numer telefonu {phone_matches} razy."
+        localization = self.data.get("localization") or {}
+        table_rows = []
+        for place in localization:
+            table_rows.append((place,))
+        self.add_table(
+            rows = table_rows,
+            title = "Zapisane lokalizacje",
+            columns = ["Miejsce"]
         )
 
+    # TODO: add apps detected from activity or information and apps detected on your account
     def panel_4(self) -> None:
         clicks_by_month = self.data.get("clicks_by_month") or {"Jan": 3, "Feb": 5, "Mar": 10}
         self.add_bar_chart(clicks_by_month, title="Kliknięcia reklam (przybliżone)")
@@ -83,6 +84,7 @@ class Module(BaseModule):
         advertisers_info_path: str = os.path.join(
             ads_data_dir, "advertisers_using_your_activity_or_information.json"
         )
+        
 
         if not os.path.exists(advertisers_info_path):
             return {"summary": "advertisers file not found"}
@@ -97,13 +99,19 @@ class Module(BaseModule):
         ) as f:
             ad_preferences_data = json.load(f)
 
+        # parse ad location data
+        with open(
+            os.path.join(ads_data_dir, "your_sampled_locations.json"), "r", encoding = "utf-8"
+        ) as f:
+            location_data = json.load(f)
+
         advertisers: list[dict] = []
         preferences: dict = {}
 
         # handle advertisers data
         label_values: dict = advertisers_data.get("label_values")
         for entry in label_values:
-            vec: dict = entry.get("vec")
+            vect: dict = entry.get("vec")
             label: str = entry.get("label").lower()
             if "interakcje" in label:
                 source: str = "interakcje z witryną/sklepem"
@@ -116,7 +124,7 @@ class Module(BaseModule):
             else:
                 source: str = "Inne interakcje reklamowe"
 
-            for company in vec:
+            for company in vect:
                 company_name = company.get("value")
                 # handle meta encoding
                 try:
@@ -149,9 +157,19 @@ class Module(BaseModule):
             if label:
                 preferences[label] = value
 
+        # handle location data
+        stored_locations: list[str] = []
+        label_values: dict = location_data.get("label_values") or {}
+        for entry in label_values:
+            label: str = entry.get("label")
+            if not label.lower() == "lokalizacja": continue
+            value: str = entry.get("value")
+            stored_locations.append(value)
+
         res: dict = {
             "top_companies" : advertisers,
-            "preferences" : preferences
+            "preferences" : preferences,
+            "localization" : stored_locations
         }
 
         self.data.update(res)
