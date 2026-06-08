@@ -159,7 +159,7 @@ class BaseModule(ttk.Frame):
             lbl = tk.Label(panel, text=title, font=("Helvetica", 14, "bold"), bg="white", anchor="w")
             lbl.pack(fill="x", anchor="nw", padx=(4, 0), pady=(4, 6))
 
-    def add_table(self, panel_index: Optional[int] = None, rows=None, title: Optional[str] = None, columns: Optional[List[str]] = None) -> None:
+    def add_table(self, panel_index: Optional[int] = None, rows=None, title: Optional[str] = None, columns: Optional[List[str]] = None, col_widths: Optional[List[int]] = None) -> None:
         if panel_index is None:
             panel_index = getattr(self, "_current_panel_index", 0)
         elif not isinstance(panel_index, int):
@@ -191,6 +191,14 @@ class BaseModule(ttk.Frame):
                 columns = ["Wartość"]
 
         tree = ttk.Treeview(container, columns=columns, show="headings", selectmode="none")
+        for i, col in enumerate(columns):
+            tree.heading(col, text=col) # set header
+            if col_widths and i < len(col_widths):
+                # set specified column widths 
+                tree.column(col, width=col_widths[i], minwidth=50, stretch=True)
+            else:
+                # default width
+                tree.column(col, width=140, minwidth=60, stretch=True)
         vsb = ttk.Scrollbar(container, orient="vertical", command=tree.yview)
         hsb = ttk.Scrollbar(container, orient="horizontal", command=tree.xview)
         tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
@@ -229,7 +237,6 @@ class BaseModule(ttk.Frame):
                 anchor="center",
                 command=lambda col=column: sort_treeview_column(col, tree._sort_reverse.get(col, False)),
             )
-            tree.column(column, anchor="center", stretch=True, width=140, minwidth=60)
 
         tree.tag_configure("oddrow", background="white")
         tree.tag_configure("evenrow", background="#f5f5f5")
