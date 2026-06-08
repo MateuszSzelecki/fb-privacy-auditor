@@ -4,55 +4,25 @@ Analizuje teksty postów, komentarzy i wiadomości, aby stworzyć profil zainter
 """
 
 from .module_template import BaseModule
+import tkinter as tk
+import threading
 
-class Module(BaseModule):
+# Global variables for caching background analysis results and thread control
+_analysis_result = None
+_analysis_exception = None
+_analysis_thread = None
+_analysis_lock = threading.Lock()
 
-    @classmethod
-    def slide_texts(cls) -> list[str]:
-        return [
-            "Analizujemy teksty Twoich postów i wiadomości",
-            "Szukamy najczęściej używanych słów.",
-            "Pomijamy stop-words i skupiamy się na rzeczownikach oraz przymiotnikach.",
-        ]
+def start_background_analysis():
+    global _analysis_thread
+    with _analysis_lock:
+        if _analysis_thread is None:
+            _analysis_thread = threading.Thread(target=_run_analysis, daemon=True)
+            _analysis_thread.start()
 
-    @classmethod
-    def tile_title(cls) -> str:
-        return "Słowa Klucze"
-
-    @classmethod
-    def tile_subtitle(cls) -> str:
-        return "(TagCloud)"
-
-    def panel_1(self) -> None:
-        nouns = self.data.get("top_nouns") or []
-        self.add_table(
-            rows=nouns,
-            title="Najpopularniejsze rzeczowniki",
-            columns=["Rzeczownik"]
-        )
-
-    def panel_2(self) -> None:
-        adjectives = self.data.get("top_adjectives") or []
-        self.add_table(
-            rows=adjectives,
-            title="Najpopularniejsze przymiotniki",
-            columns=["Przymiotnik"],
-        )
-
-    def panel_3(self) -> None:
-        words = self.data.get("speech_type_categorization") or {}
-        self.add_bar_chart(data=words, title="Podział użytych słów")
-
-    def panel_4(self) -> None:
-        tag_scores = self.data.get("top_words") or {}
-
-        self.add_table(
-            rows=list(tag_scores.items()),
-            title="Najpopularniejsze słowa",
-            columns=["Słowo", "Ilość"],
-        )
-
-    def analyze(self) -> dict:
+def _run_analysis():
+    global _analysis_result, _analysis_exception
+    try:
         import json
         import os
         from collections import Counter
@@ -70,9 +40,11 @@ class Module(BaseModule):
 
         # check for errors
         if not os.path.exists(post_file_path):
-            return {"summary": "post file not found"}
+            _analysis_result = {"summary": "post file not found"}
+            return
         if not os.path.exists(message_base_path):
-            return {"summary": "message file not found"}
+            _analysis_result = {"summary": "message file not found"}
+            return
 
         # load json data
         with open(post_file_path, "r", encoding="utf-8") as f:
@@ -167,7 +139,137 @@ class Module(BaseModule):
                 "Przymiotniki": len(set(adjectives)),
             },
         }
+        _analysis_result = results
+    except Exception as e:
+        _analysis_exception = e
 
-        # add and return data
-        self.data.update(results)
-        return results
+
+class Module(BaseModule):
+
+    @classmethod
+    def slide_texts(cls) -> list[str]:
+        return [
+            "Analizujemy teksty Twoich postów i wiadomości",
+            "Szukamy najczęściej używanych słów.",
+            "Pomijamy stop-words i skupiamy się na rzeczownikach oraz przymiotnikach.",
+        ]
+
+    @classmethod
+    def tile_title(cls) -> str:
+        return "Słowa Klucze"
+
+    @classmethod
+    def tile_subtitle(cls) -> str:
+        return "(TagCloud)"
+
+    def panel_1(self) -> None:
+        nouns = self.data.get("top_nouns") or []
+        self.add_table(
+            rows=nouns,
+            title="Najpopularniejsze rzeczowniki",
+            columns=["Rzeczownik"]
+        )
+
+    def panel_2(self) -> None:
+        adjectives = self.data.get("top_adjectives") or []
+        self.add_table(
+            rows=adjectives,
+            title="Najpopularniejsze przymiotniki",
+            columns=["Przymiotnik"],
+        )
+
+    def panel_3(self) -> None:
+        words = self.data.get("speech_type_categorization") or {}
+        self.add_bar_chart(data=words, title="Podział użytych słów")
+
+    def panel_4(self) -> None:
+        tag_scores = self.data.get("top_words") or {}
+
+        self.add_table(
+            rows=list(tag_scores.items()),
+            title="Najpopularniejsze słowa",
+            columns=["Słowo", "Ilość"],
+        )
+
+    def analyze(self) -> dict:
+        global _analysis_result
+        # If background thread is already done, return the cached result
+        if _analysis_result is not None:
+            self.data.update(_analysis_result)
+            return _analysis_result
+        # Otherwise return a placeholder dictionary
+        return {
+            "summary": "Analiza w toku...",
+            "details": {}
+        }
+
+    def show_analysis(self) -> None:
+        global _analysis_result, _analysis_exception
+
+        if _analysis_exception is not None:
+            # Display exception
+            self.slide_container.grid_remove()
+            self.slide_hint.grid_remove()
+            err_label = tk.Label(
+                self,
+                text=f"Błąd podczas analizy:\n{_analysis_exception}",
+                font=("Helvetica", 14),
+                fg="red",
+                bg="white"
+            )
+            err_label.grid(row=1, column=0, sticky="nsew", pady=20)
+            return
+
+        if _analysis_result is not None:
+            # If result is ready, load normally
+            self.data.update(_analysis_result)
+            super().show_analysis()
+        else:
+            # If not yet ready, show loading screen and poll
+            self.slide_container.grid_remove()
+            self.slide_hint.grid_remove()
+
+            self.loading_frame = tk.Frame(self, bg="white", bd=2, relief="solid")
+            self.loading_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+            
+            lbl = tk.Label(
+                self.loading_frame,
+                text="Trwa analizowanie danych w tle...\nProszę czekać.",
+                font=("Helvetica", 24),
+                bg="white",
+                fg="black",
+                justify="center"
+            )
+            lbl.pack(expand=True)
+            self.check_analysis_complete()
+
+    def check_analysis_complete(self) -> None:
+        global _analysis_result, _analysis_exception
+
+        if not self.winfo_exists():
+            return
+
+        if _analysis_exception is not None:
+            if hasattr(self, "loading_frame") and self.loading_frame.winfo_exists():
+                self.loading_frame.destroy()
+            err_label = tk.Label(
+                self,
+                text=f"Błąd podczas analizy:\n{_analysis_exception}",
+                font=("Helvetica", 14),
+                fg="red",
+                bg="white"
+            )
+            err_label.grid(row=1, column=0, sticky="nsew", pady=20)
+            return
+
+        if _analysis_result is not None:
+            if hasattr(self, "loading_frame") and self.loading_frame.winfo_exists():
+                self.loading_frame.destroy()
+            self.data.update(_analysis_result)
+            super().show_analysis()
+        else:
+            self.after(100, self.check_analysis_complete)
+
+
+# Start the analysis in background immediately when this module is imported
+start_background_analysis()
