@@ -16,6 +16,7 @@ venv/
 *.jpg
 *.jpeg
 *.png
+*.gif
 
 # Videos
 *.mp4
