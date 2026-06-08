@@ -127,6 +127,9 @@ class Module(BaseModule):
         words: list[str] = stored_text.split()
         words: list[str] = [w for w in words if len(w) > 3 and w not in ignored_words]
 
+        MAX_WORDS = 10000
+        words = words[:MAX_WORDS]
+
         # get statistics
         # based on Polish (spacy library)
         try:
