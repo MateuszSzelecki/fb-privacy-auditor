@@ -33,15 +33,15 @@ class Module(BaseModule):
 
     # archived threads
     def panel_1(self) -> None:
-        archived_count = self.data.get("archived_count")
-        self.add_kpi_card(
-            0,
-            value=str(archived_count),
-            title="Liczba zarchiwizowanych konwersacji",
-            subtitle="Są to konwersacje i grupy, które nie wyświetlają się już w aplikacji, ale ich wiadomości dalej widnieją w bazie danych",
+        archived: list = self.data.get("archived_conversations") or []
+        table_rows = [(conv,) for conv in archived]
+        self.add_table(
+            rows = table_rows,
+            title = "Zarchiwizowane konwersacje",
+            columns = ["Nazwa"],
         )
 
-    # autofill information
+     # autofill information
     def panel_2(self) -> None:
         autofill: dict = self.data.get("autofill_info") or {}
         table_rows: list = []
@@ -127,20 +127,25 @@ class Module(BaseModule):
                         "timestamp" : timestamp,
                         "name" : item.get("value")
                     })
-
         return res
+
+    def _get_conversations(self, conv_path: str) -> list[str]:
+        if not os.path.exists(conv_path): return []
+        return os.listdir(conv_path)
 
     def analyze(self) -> dict:
         messages_path: str = os.path.join("data", "your_facebook_activity", "messages")
         autofill_path: str = os.path.join(messages_path, "autofill_information.json")
         device_path: str = os.path.join(messages_path, "your_end-to-end_encryption_enabled_messenger_device.json")
+        archived_dir: str = os.path.join(messages_path, "archived_threads")
 
         autofill_info: dict = self._get_autofill_info(autofill_path)
         threads_count = self._get_threads_count(messages_path)
         devices = self._get_messenger_devices(device_path)
+        archived = self._get_conversations(archived_dir)
 
         res: dict = {
-            "archived_count" : threads_count["archived"],
+            "archived_conversations" : archived,
             "autofill_info" : autofill_info,
             "threads_count" : threads_count,
             "mobile_info" : devices
