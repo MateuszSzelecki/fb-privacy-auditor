@@ -139,7 +139,7 @@ class Module(BaseModule):
             pll = spacy.load("pl_core_news_sm")
 
         # there could be a lot of messages
-        pll.max_length = 3000000
+        pll.max_length = 5000000
 
         # apperently this optimizes the process a little
         with pll.select_pipes(disable=["ner", "parser"]):
