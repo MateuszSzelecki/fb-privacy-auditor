@@ -9,5 +9,13 @@ venv/
 # Environment variables
 .env
 
-# Wszystkie pliki JSON
+# JSON
 *.json
+
+# Images
+*.jpg
+*.jpeg
+*.png
+
+# Videos
+*.mp4
