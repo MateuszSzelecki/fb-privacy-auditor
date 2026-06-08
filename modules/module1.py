@@ -4,9 +4,7 @@ Ten moduł analizuje dane reklamowe i wyświetla informacje o możliwych dopasow
 kontaktów przesłanych do Facebooka.
 """
 
-import tkinter as tk
 import json
-import datetime
 import os
 
 from .module_template import BaseModule
@@ -29,6 +27,7 @@ class Module(BaseModule):
     def tile_subtitle(cls) -> str:
         return "(AdShadow)"
 
+    # companies which may manage users data
     def panel_1(self) -> None:
         raw_companies = self.data.get("top_companies") or []
         table_rows = []
@@ -48,6 +47,7 @@ class Module(BaseModule):
             ],
         )
 
+    # users ad preferences
     def panel_2(self) -> None:
         preferences = self.data.get("preferences") or {}
 
@@ -62,6 +62,7 @@ class Module(BaseModule):
             col_widths=[800,100]
         )
 
+    # locatization detected
     def panel_3(self) -> None:
         localization = self.data.get("localization") or {}
         table_rows = []
@@ -73,7 +74,7 @@ class Module(BaseModule):
             columns = ["Miejsce"]
         )
 
-    # TODO: add apps detected from activity or information and apps detected on your account
+    # apps detected from activity or information and apps detected on your account
     def panel_4(self) -> None:
         apps: list[str] = self.data.get("detected_apps") or []
         table_rows: list = [(app,) for app in apps]
@@ -106,54 +107,19 @@ class Module(BaseModule):
                 res.append(appname)
         return res
 
+    def _get_ad_advertisers(self, filename: str ) -> list[dict]:
+        if not os.path.exists(filename): return []
 
-    def analyze(self) -> dict:
+        # parse json data
+        with open(filename, "r", encoding = "utf-8") as f:
+            data: dict = json.load(f)
 
-        ad_data_dir: str = os.path.join("data", "ads_information")
-
-        advertisers_info_path: str = os.path.join(
-            ad_data_dir, "advertisers_using_your_activity_or_information.json"
-        )
-
-        apps_detected_activity_path: str = os.path.join(
-            ad_data_dir, "apps_detected_from_your_activity.json"
-        )
-
-        apps_detected_account_path: str = os.path.join(
-            ad_data_dir, "apps_detected_on_your_account.json"
-        )
-
-        apps_detected_account = self._get_ad_app_detected(apps_detected_account_path)
-        apps_detected_activity = self._get_ad_app_detected(apps_detected_activity_path)
-
-        detected_apps: list[str] = apps_detected_account + apps_detected_activity 
-
-        if not os.path.exists(advertisers_info_path):
-            return {"summary": "advertisers file not found"}
-
-        # parse advertiers using your activity or info
-        with open(advertisers_info_path, "r", encoding = "utf-8") as f:
-            advertisers_data = json.load(f)
-
-        # parse stampled locations
-        with open(
-            os.path.join(ad_data_dir, "ad_preferences.json"), "r", encoding = "utf-8"
-        ) as f:
-            ad_preferences_data = json.load(f)
-
-        # parse ad location data
-        with open(
-            os.path.join(ad_data_dir, "your_sampled_locations.json"), "r", encoding = "utf-8"
-        ) as f:
-            location_data = json.load(f)
-
-        advertisers: list[dict] = []
-        preferences: dict = {}
+        res: list[dict] = []
 
         # handle advertisers data
-        label_values: dict = advertisers_data.get("label_values")
+        label_values: list = data.get("label_values") or []
         for entry in label_values:
-            vect: dict = entry.get("vec")
+            vec: dict = entry.get("vec")
             label: str = entry.get("label").lower()
             if "interakcje" in label:
                 source: str = "interakcje z witryną/sklepem"
@@ -166,7 +132,7 @@ class Module(BaseModule):
             else:
                 source: str = "Inne interakcje reklamowe"
 
-            for company in vect:
+            for company in vec:
                 company_name = company.get("value")
                 # handle meta encoding
                 try:
@@ -175,10 +141,36 @@ class Module(BaseModule):
                     company_name = company.get("value")
 
                 if not company_name: continue
-                advertisers.append({"company_name" : company_name, "source" : source})
+                res.append({"company_name" : company_name, "source" : source})
 
+        return res
+
+    def _get_ad_stored_location(self, filename: str) -> list[str]:
+        if not os.path.exists(filename): return []
+
+        # parse json data
+        with open(filename, "r", encoding = "utf-8") as f:
+            data: dict = json.load(f)
+
+        res: list = []
+        label_values: dict = data.get("label_values") or {}
+        for entry in label_values:
+            label: str = entry.get("label")
+            if not label.lower() == "lokalizacja": continue
+            value: str = entry.get("value")
+            res.append(value)
+        return res
+
+    def _get_ad_preferences(self, filename: str) -> dict:
+        if not os.path.exists(filename): return {}
+
+        # parse json data
+        with open(filename, "r", encoding = "utf-8") as f:
+            data: dict = json.load(f)
+
+        res: dict = {}
         # handle user preferences
-        label_values: dict = ad_preferences_data.get("label_values") or {}
+        label_values: dict = data.get("label_values") or {}
         for entry in label_values:
             label: str = entry.get("label")
 
@@ -196,33 +188,47 @@ class Module(BaseModule):
             try: value = value.encode("latin1").decode("utf-8")
             except: pass
             if label:
-                preferences[label] = value
+                res[label] = value
 
-        # handle location data
-        stored_locations: list[str] = []
-        label_values: dict = location_data.get("label_values") or {}
-        for entry in label_values:
-            label: str = entry.get("label")
-            if not label.lower() == "lokalizacja": continue
-            value: str = entry.get("value")
-            stored_locations.append(value)
+        return res
+
+
+    def analyze(self) -> dict:
+
+        ad_data_dir: str = os.path.join("data", "ads_information")
+
+        advertisers_info_path: str = os.path.join(
+            ad_data_dir, "advertisers_using_your_activity_or_information.json"
+        )
+
+        apps_detected_activity_path: str = os.path.join(
+            ad_data_dir, "apps_detected_from_your_activity.json"
+        )
+
+        apps_detected_account_path: str = os.path.join(
+            ad_data_dir, "apps_detected_on_your_account.json"
+        )
+
+        ad_preferences_path: str = os.path.join(
+            os.path.join(ad_data_dir, "ad_preferences.json")
+        )
+
+        ad_location_path: str = os.path.join(ad_data_dir, "your_sampled_locations.json")
+
+        apps_detected_account = self._get_ad_app_detected(apps_detected_account_path)
+        apps_detected_activity = self._get_ad_app_detected(apps_detected_activity_path)
+        detected_apps: list[str] = apps_detected_account + apps_detected_activity 
+
+        advertisers: list[dict] = self._get_ad_advertisers(advertisers_info_path)
+        preferences: dict = self._get_ad_preferences(ad_preferences_path)
+        stored_locations: list[str] = self._get_ad_stored_location(ad_location_path)
 
         res: dict = {
             "top_companies" : advertisers,
             "preferences" : preferences,
             "localization" : stored_locations,
-            "detected_apps" : apps_detected_account
+            "detected_apps" : detected_apps
         }
 
         self.data.update(res)
         return res;
-
-
-if __name__ == "__main__":
-    sample_data = {
-        "external_matches": 5,
-        "ad_clicks": 18,
-        "company_count": 4,
-    }
-    module = Module(tk.Tk(), data=sample_data)
-    module.run_console()
