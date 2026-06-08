@@ -24,7 +24,7 @@ class Module(BaseModule):
         return "(TagCloud)"
 
     def panel_1(self) -> None:
-        nouns = self.data.get("top_nouns") or ["muzyka", "polityka", "podróże", "sport"]
+        nouns = self.data.get("top_nouns") or []
         self.add_table(
             rows=nouns,
             title="Najpopularniejsze rzeczowniki",
