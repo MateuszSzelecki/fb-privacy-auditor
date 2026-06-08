@@ -1,6 +1,6 @@
-"""Moduł 5: Widmo Messengera (GhostChat).
+"""Moduł 5: Cień Tożsamości (ShadowID).
 
-Analizuje usunięte wiadomości, foldery spamowe i ukryte ślady konwersacji.
+Analizuje zsynchronizowane kontakty, telemetrię urządzeń mobilnych/PC oraz prognozy profilowe AI.
 """
 
 import tkinter as tk
@@ -17,140 +17,256 @@ class Module(BaseModule):
     @classmethod
     def slide_texts(cls) -> list[str]:
         return [
-            "Przeszukujemy logi Messengera pod kątem usuniętych i ukrytych wiadomości.",
-            "Wydobywamy statystyki dotyczące cofniętych wiadomości i folderów spam.",
-            "Ujawnimy interakcje, które Facebook trzyma w ukryciu.",
-            "Pokażemy, ile wiadomości mogłeś usunąć lub pominąć przez przypadek.",
+            "Przeszukujemy ukryte dane w Twoim profilu pod kątem telemetrii i kontaktów.",
+            "Ujawnimy informacje o zsynchronizowanych kontaktach z Twojej książki telefonicznej.",
+            "Wydobędziemy szczegółowe metadane sprzętowe Twojego smartfona i komputera.",
+            "Pokażemy, co algorytmy AI Meta prognozują na temat Twojego wieku i języków.",
         ]
 
     @classmethod
     def tile_title(cls) -> str:
-        return "Widmo Messengera"
+        return "Cień Tożsamości"
 
     @classmethod
     def tile_subtitle(cls) -> str:
-        return "(GhostChat)"
+        return "(ShadowID)"
 
-    # archived threads
-    def panel_1(self) -> None:
-        archived: list = self.data.get("archived_conversations") or []
-        table_rows = [(conv,) for conv in archived]
-        self.add_table(
-            rows = table_rows,
-            title = "Zarchiwizowane konwersacje",
-            columns = ["Nazwa"],
-        )
+    def _fix_encoding(self, text: str) -> str:
+        if not isinstance(text, str):
+            return text
+        try:
+            return text.encode('latin1').decode('utf-8')
+        except Exception:
+            return text
 
-     # autofill information
-    def panel_2(self) -> None:
-        autofill: dict = self.data.get("autofill_info") or {}
-        table_rows: list = []
-        for key, value in autofill.items():
-            table_rows.append((key, value))
+    def _get_contacts(self) -> list:
+        contacts = []
+        base_path = "data"
+        contacts_path = os.path.join(base_path, "personal_information", "other_personal_information", "your_imported_contacts.json")
+        contacts_before_2021 = os.path.join(base_path, "personal_information", "profile_information", "contacts_uploaded_before_2021.json")
 
-        self.add_table(
-            rows = table_rows,
-            title = "Automatyczne wypełnianie formularzy",
-            columns = ["Typ danej", "Wartość"],
-            col_widths = [ 140, 800]
-        )
+        if os.path.exists(contacts_path):
+            try:
+                with open(contacts_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                for item in d:
+                    name, point, ts = "Nieznany", "Brak", "Brak"
+                    for lv in item.get("label_values", []):
+                        lbl = self._fix_encoding(lv.get("label"))
+                        if lbl == "Imię i nazwisko kontaktu":
+                            name = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Punkt kontaktowy":
+                            point = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Czas aktualizacji" and lv.get("timestamp_value"):
+                            ts = datetime.fromtimestamp(lv.get("timestamp_value"), tz=timezone.utc).strftime('%Y-%m-%d %H:%M')
+                    contacts.append((name, point, ts))
+            except Exception:
+                pass
 
-    # messenger structure: Inbox vs Archive vs E2EE (quantity)
-    def panel_3(self) -> None:
-        folder_counts: dict = self.data.get("threads_count") or {}
-        self.add_pie_chart(
-            data =folder_counts,
-            title="Rozkład konwersacji"
-        )
+        if os.path.exists(contacts_before_2021):
+            try:
+                with open(contacts_before_2021, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                for lv in d.get("label_values", []):
+                    lbl = self._fix_encoding(lv.get("label"))
+                    if lbl == "Kontakty":
+                        for c_dict in lv.get("vec", []):
+                            name, point, ts = "Nieznany", "Brak", "Brak"
+                            for item in c_dict.get("dict", []):
+                                sub_lbl = self._fix_encoding(item.get("label"))
+                                if sub_lbl == "Nazwa":
+                                    name = self._fix_encoding(item.get("value"))
+                                elif sub_lbl == "Punkt kontaktowy":
+                                    point = self._fix_encoding(item.get("value"))
+                                elif sub_lbl == "Time of latest import" and item.get("timestamp_value"):
+                                    ts = datetime.fromtimestamp(item.get("timestamp_value"), tz=timezone.utc).strftime('%Y-%m-%d %H:%M')
+                            contacts.append((name, point, ts))
+            except Exception:
+                pass
+        
+        contacts.sort(key=lambda x: x[0].lower() if x[0] else "")
+        return contacts
 
-    # devices from your_end-to-end_encryption_enabled_messenger_device.json
-    def panel_4(self) -> None:
-        devices: dict = self.data.get("mobile_info") or {}
-        table_rows: list = []
-        for entry in devices:
-            ts = entry.get("timestamp")
-            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-            table_rows.append((
-                entry.get("name"),
-                dt.strftime('%Y-%m-%d %H:%M:%S')
-            ))
-        self.add_table(
-            rows = table_rows,
-            columns = ["Urządzanie", "Data dodania"],
-            title = "Urządzenia wspierające szyfrowanie"
-        )
+    def _get_mobile_devices(self) -> list:
+        devices = []
+        devices_path = os.path.join("data", "personal_information", "profile_information", "your_devices.json")
+        if os.path.exists(devices_path):
+            try:
+                with open(devices_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                for item in d:
+                    dev_type, manufacturer, os_type, os_ver, cpu_cores, google_accts, last_seen = "Nieznane", "Nieznany", "Nieznany", "", "", "", "Brak"
+                    for lv in item.get("label_values", []):
+                        lbl = self._fix_encoding(lv.get("label"))
+                        if lbl == "Typ urządzenia":
+                            dev_type = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Producent":
+                            manufacturer = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Typ systemu operacyjnego":
+                            os_type = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Wersja systemu operacyjnego":
+                            os_ver = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Liczba rdzeni procesora":
+                            cpu_cores = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Liczba kont Google":
+                            google_accts = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Szczegółowe informacje o identyfikatorze urządzenia" and lv.get("dict"):
+                            for sub in lv.get("dict", []):
+                                sub_lbl = self._fix_encoding(sub.get("label"))
+                                if sub_lbl == "last_seen_time" and sub.get("timestamp_value"):
+                                    last_seen = datetime.fromtimestamp(sub.get("timestamp_value"), tz=timezone.utc).strftime('%Y-%m-%d %H:%M')
+                    devices.append((
+                        manufacturer if manufacturer != "Nieznany" else dev_type,
+                        dev_type if dev_type != "Nieznane" else "-",
+                        f"{os_type} {os_ver}".strip(),
+                        cpu_cores if cpu_cores else "-",
+                        google_accts if google_accts else "0",
+                        last_seen
+                    ))
+            except Exception:
+                pass
+        return devices
 
-    def _get_conversation_count(self, dirpath: str) -> int:
-        if not os.path.exists(dirpath): return 0
-        return len(os.listdir(dirpath))
+    def _get_pc_hardware(self) -> list:
+        pc_list = []
+        pc_path = os.path.join("data", "logged_information", "other_logged_information", "detected_hardware.json")
+        if os.path.exists(pc_path):
+            try:
+                with open(pc_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                for item in d:
+                    last_seen, gpu, ram, cpu = "Brak", "Brak", "Brak", "Brak"
+                    for lv in item.get("label_values", []):
+                        lbl = self._fix_encoding(lv.get("label"))
+                        if lbl == "Czas ostatniego pełnego wykrycia" and lv.get("timestamp_value"):
+                            last_seen = datetime.fromtimestamp(lv.get("timestamp_value"), tz=timezone.utc).strftime('%Y-%m-%d %H:%M')
+                        elif lbl == "Renderer karty graficznej":
+                            gpu = self._fix_encoding(lv.get("value"))
+                        elif lbl == "RAM (GB)":
+                            ram = self._fix_encoding(lv.get("value"))
+                        elif lbl == "Liczba rdzeni procesora":
+                            cpu = self._fix_encoding(lv.get("value"))
+                    pc_list.append((gpu, f"{ram} GB" if ram != "Brak" else "Brak", cpu, last_seen))
+            except Exception:
+                pass
+        return pc_list
 
-    def _get_autofill_info(self, filepath: str) -> dict:
-        if not os.path.exists(filepath): return {}
-        with open(filepath, "r", encoding = "utf-8") as f:
-            data: dict = json.load(f)
+    def _get_demographics_and_pokes(self) -> dict:
+        pokes = []
+        pokes_path = os.path.join("data", "your_facebook_activity", "other_activity", "pokes.json")
+        if os.path.exists(pokes_path):
+            try:
+                with open(pokes_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                for item in d.get("pokes_v2", []):
+                    poker = self._fix_encoding(item.get("poker"))
+                    pokee = self._fix_encoding(item.get("pokee"))
+                    ts = datetime.fromtimestamp(item.get("timestamp"), tz=timezone.utc).strftime('%Y-%m-%d %H:%M')
+                    pokes.append((poker, pokee, ts))
+            except Exception:
+                pass
 
-        autofill: dict = data.get("autofill_information_v2") or {}
-        return autofill
+        predicted_age = "Nieznany"
+        age_path = os.path.join("data", "personal_information", "other_personal_information", "age_group_prediction.json")
+        if os.path.exists(age_path):
+            try:
+                with open(age_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                for lv in d.get("label_values", []):
+                    lbl = self._fix_encoding(lv.get("label"))
+                    if lbl == "Grupa wiekowa":
+                        predicted_age = self._fix_encoding(lv.get("value"))
+            except Exception:
+                pass
 
-    def _get_threads_count(self, messages_path: str) -> dict:
-        archived_dir: str = os.path.join(messages_path, "archived_threads")
-        filtered_dir: str = os.path.join(messages_path, "filtered_threads")
-        requests_dir: str = os.path.join(messages_path, "message_requests")
-        inbox_dir: str = os.path.join(messages_path, "inbox")
-        e2ee_dir: str = os.path.join(messages_path, "e2ee_cutover")
+        pred_langs = []
+        lang_path = os.path.join("data", "personal_information", "profile_information", "predicted_languages.json")
+        if os.path.exists(lang_path):
+            try:
+                with open(lang_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                for lv in d.get("label_values", []):
+                    lbl = self._fix_encoding(lv.get("label"))
+                    val = self._fix_encoding(lv.get("value"))
+                    if val:
+                        display_lbl = lbl.replace("Języki prognozowane na podstawie ", "")
+                        pred_langs.append((display_lbl, val))
+            except Exception:
+                pass
 
-        threads_count: dict = {
-            "archived" : self._get_conversation_count(archived_dir),
-            "filtered" : self._get_conversation_count(filtered_dir),
-            "requests" : self._get_conversation_count(requests_dir),
-            "encrypted" : self._get_conversation_count(e2ee_dir),
-            "common" : self._get_conversation_count(inbox_dir)
+        return {
+            "pokes": pokes,
+            "predicted_age": predicted_age,
+            "predicted_languages": pred_langs
         }
 
-        return threads_count
+    def panel_1(self) -> None:
+        contacts = self.data.get("contacts") or []
+        table_rows = [(name, point, ts) for name, point, ts in contacts]
+        self.add_table(
+            rows = table_rows,
+            title = f"Zsynchronizowana książka adresowa ({len(contacts)} kontaktów)",
+            columns = ["Nazwa kontaktu", "Numer telefonu / Email", "Ostatni import"],
+            col_widths = [200, 300, 150]
+        )
 
-    def _get_messenger_devices(self, devices_path: str) -> list[dict]:
-        if not os.path.exists(devices_path): return []
-        with open(devices_path, "r", encoding = "utf-8") as f:
-            data: dict = json.load(f)
+    def panel_2(self) -> None:
+        devices = self.data.get("mobile_devices") or []
+        table_rows = [(man, model, os_info, cpu, g_accts, last_seen) for man, model, os_info, cpu, g_accts, last_seen in devices]
+        self.add_table(
+            rows = table_rows,
+            title = "Telemetria urządzeń mobilnych",
+            columns = ["Producent", "Model", "System operacyjny", "Rdzenie CPU", "Konta Google", "Ostatnia aktywność"],
+            col_widths = [120, 120, 120, 100, 100, 150]
+        )
 
-        res: list = []
+    def panel_3(self) -> None:
+        pc_devices = self.data.get("pc_devices") or []
+        table_rows = [(gpu, ram, cpu, last_seen) for gpu, ram, cpu, last_seen in pc_devices]
+        self.add_table(
+            rows = table_rows,
+            title = "Wykryte konfiguracje komputerów PC",
+            columns = ["Karta graficzna (GPU)", "Pamięć RAM", "Rdzenie CPU", "Ostatni pełny skan"],
+            col_widths = [350, 100, 100, 150]
+        )
 
-        for entry in data:
-            timestamp: int = entry.get("timestamp") or 0
-            label_values: list = entry.get("label_values")
-
-            for item in label_values:
-                label: str = item.get("label")
-                if label == "Nazwa": 
-                    res.append({
-                        "timestamp" : timestamp,
-                        "name" : item.get("value")
-                    })
-        return res
-
-    def _get_conversations(self, conv_path: str) -> list[str]:
-        if not os.path.exists(conv_path): return []
-        return os.listdir(conv_path)
+    def panel_4(self) -> None:
+        ai_data = self.data.get("demographics_and_pokes") or {}
+        rows = []
+        
+        age = ai_data.get("predicted_age", "Nieznany")
+        rows.append(("Przewidywany wiek (AI)", age))
+        
+        langs = ai_data.get("predicted_languages") or []
+        for lbl, val in langs:
+            rows.append((f"Język ({lbl})", val))
+            
+        pokes = ai_data.get("pokes") or []
+        for poker, pokee, ts in pokes:
+            rows.append((f"Zaczepka: {poker} ➔ {pokee}", ts))
+            
+        if not rows:
+            rows = [("Brak danych", "-")]
+            
+        self.add_table(
+            rows = rows,
+            title = "Przewidywania AI & Interakcje (Zaczepki)",
+            columns = ["Etykieta profilu / Zdarzenie", "Szczegóły / Czas"],
+            col_widths = [350, 350]
+        )
 
     def analyze(self) -> dict:
-        messages_path: str = os.path.join("data", "your_facebook_activity", "messages")
-        autofill_path: str = os.path.join(messages_path, "autofill_information.json")
-        device_path: str = os.path.join(messages_path, "your_end-to-end_encryption_enabled_messenger_device.json")
-        archived_dir: str = os.path.join(messages_path, "archived_threads")
-
-        autofill_info: dict = self._get_autofill_info(autofill_path)
-        threads_count = self._get_threads_count(messages_path)
-        devices = self._get_messenger_devices(device_path)
-        archived = self._get_conversations(archived_dir)
+        contacts = self._get_contacts()
+        mobile_devices = self._get_mobile_devices()
+        pc_devices = self._get_pc_hardware()
+        demo_and_pokes = self._get_demographics_and_pokes()
 
         res: dict = {
-            "archived_conversations" : archived,
-            "autofill_info" : autofill_info,
-            "threads_count" : threads_count,
-            "mobile_info" : devices
+            "contacts": contacts,
+            "mobile_devices": mobile_devices,
+            "pc_devices": pc_devices,
+            "demographics_and_pokes": demo_and_pokes
         }
 
         self.data.update(res)
-        return res;
-
+        return res
