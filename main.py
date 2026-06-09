@@ -3,6 +3,8 @@ import pkgutil
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
+import random
+import webbrowser
 
 from modules.module_template import BaseModule
 
@@ -92,8 +94,9 @@ class MainApp:
         self.current_frame.rowconfigure(3, weight=1)
         self.current_frame.columnconfigure((0, 1, 2), weight=1)
 
-        header_label = ttk.Label(self.current_frame, text='Facebook Privacy Auditor', font=('Helvetica', 28, 'bold'))
+        header_label = ttk.Label(self.current_frame, text='Facebook Privacy Auditor', font=('Helvetica', 28, 'bold'), cursor='hand2')
         header_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        header_label.bind('<Button-1>', lambda e: self.show_authors())
 
         for index, tile in enumerate(self.tiles_config, start=1):
             row = (index - 1) // 3
@@ -187,6 +190,92 @@ class MainApp:
             module_widget.show_history_slideshow()
             if self.history_button:
                 self.history_button.configure(text='Analiza')
+
+    def show_authors(self):
+        authors = [
+            "Mateusz Szelecki - pomysł; templatka pod cały projekt; moduły: Cień Tożsamości, Archiwum Emocji",
+            "Kacper Rothkegel - moduły: coś",
+            "Mateusz Zawieracz - moduły: coś",
+            "Mikołaj Osękowski - historie w modułach"
+        ]
+        random.shuffle(authors)
+
+        sources = [
+            ("Centrum Pomocy Meta", "https://www.facebook.com/help/212802592074644", "Instrukcja pobierania kopii swoich danych osobowych"),
+            ("Polityka Prywatności Meta", "https://www.facebook.com/privacy/policy", "Zasady zbierania i wykorzystywania danych użytkowników"),
+            ("Portal informacyjny RODO (Art. 15)", "https://gdpr-info.eu/art-15-gdpr/", "Prawo dostępu realizowane przez eksport danych"),
+            ("The Guardian (Cambridge Analytica)", "https://www.theguardian.com/news/series/cambridge-analytica-files", "Śledztwo o masowym nadużyciu danych z Facebooka"),
+            ("Niebezpiecznik.pl", "https://niebezpiecznik.pl/", "Analizy wycieków danych i incydentów prywatności w sieci"),
+            ("Biblioteka Matplotlib", "https://matplotlib.org/", "Dokumentacja silnika wykresów statystycznych"),
+            ("Biblioteka Tkinter", "https://docs.python.org/3/library/tkinter.html", "Dokumentacja środowiska GUI dla języka Python"),
+            ("Tematyka analizy danych na GitHub", "https://github.com/topics/facebook-data-analysis", "Projekty Open Source badające prywatność w Meta"),
+            ("Platforma Canva", "https://www.canva.com/", "Projektowanie szablonów graficznych i slajdów do historii")
+        ]
+
+        popup = tk.Toplevel(self.root)
+        popup.title("Autorzy i źródła projektu")
+        popup.resizable(False, False)
+        popup.transient(self.root)
+        popup.grab_set()
+
+        popup.configure(bg="#f8f9fa")
+
+        popup_frame = tk.Frame(popup, bg="#ffffff", bd=1, relief="solid")
+        popup_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+
+        title_lbl = tk.Label(popup_frame, text="Autorzy Projektu", font=("Helvetica", 16, "bold"), bg="#ffffff", fg="#333333")
+        title_lbl.pack(pady=(10, 8))
+
+        for author in authors:
+            parts = author.split(" - ", 1)
+            name = parts[0]
+            role = parts[1] if len(parts) > 1 else ""
+
+            author_frame = tk.Frame(popup_frame, bg="#ffffff")
+            author_frame.pack(fill="x", padx=20, pady=4)
+
+            name_lbl = tk.Label(author_frame, text=name, font=("Helvetica", 10, "bold"), bg="#ffffff", fg="#0056b3", anchor="w")
+            name_lbl.pack(side="left")
+
+            role_lbl = tk.Label(author_frame, text=f" - {role}", font=("Helvetica", 10), bg="#ffffff", fg="#555555", anchor="w", wraplength=420, justify="left")
+            role_lbl.pack(side="left", fill="x", expand=True)
+
+        separator = tk.Frame(popup_frame, height=1, bg="#dddddd", bd=0)
+        separator.pack(fill="x", padx=20, pady=(15, 10))
+
+        sources_title_lbl = tk.Label(popup_frame, text="Źródła i Dokumentacja", font=("Helvetica", 16, "bold"), bg="#ffffff", fg="#333333")
+        sources_title_lbl.pack(pady=(5, 8))
+
+        for name, url, desc in sources:
+            source_frame = tk.Frame(popup_frame, bg="#ffffff")
+            source_frame.pack(fill="x", padx=20, pady=4)
+
+            top_frame = tk.Frame(source_frame, bg="#ffffff")
+            top_frame.pack(fill="x", anchor="w")
+
+            name_lbl = tk.Label(top_frame, text=name, font=("Helvetica", 9, "bold"), bg="#ffffff", fg="#495057", anchor="w")
+            name_lbl.pack(side="left")
+
+            desc_lbl = tk.Label(top_frame, text=f" - {desc}", font=("Helvetica", 9), bg="#ffffff", fg="#6c757d", anchor="w")
+            desc_lbl.pack(side="left")
+
+            url_lbl = tk.Label(source_frame, text=url, font=("Courier", 8, "underline"), bg="#ffffff", fg="#007bff", cursor="hand2", anchor="w")
+            url_lbl.pack(side="top", anchor="w", padx=(10, 0))
+            url_lbl.bind("<Button-1>", lambda e, u=url: webbrowser.open(u))
+
+        # Dynamically calculate window height
+        popup.update_idletasks()
+        popup_w = 640
+        popup_h = popup.winfo_reqheight()
+
+        root_w = self.root.winfo_width()
+        root_h = self.root.winfo_height()
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+
+        x = root_x + (root_w - popup_w) // 2
+        y = root_y + (root_h - popup_h) // 2
+        popup.geometry(f"{popup_w}x{popup_h}+{x}+{y}")
 
     def load_module_widget(self, module_name, parent):
         try:
