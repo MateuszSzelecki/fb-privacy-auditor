@@ -2,6 +2,7 @@ import importlib
 import pkgutil
 import tkinter as tk
 from tkinter import ttk, messagebox
+import os
 
 from modules.module_template import BaseModule
 
@@ -132,10 +133,13 @@ class MainApp:
         header_frame.grid(row=0, column=0, sticky='ew', pady=(0, 10))
         header_frame.columnconfigure(0, weight=1)
         header_frame.columnconfigure(1, weight=0)
+        header_frame.columnconfigure(2, weight=0)
 
         ttk.Label(header_frame, text=tile['title'], font=('Helvetica', 28, 'bold')).grid(row=0, column=0, sticky='w')
         back_button = ttk.Button(header_frame, text='Powrót', command=self.show_tile_grid, style='Back.TButton')
-        back_button.grid(row=0, column=1, sticky='e')
+        back_button.grid(row=0, column=2, sticky='e')
+
+        self.history_button = None
 
         module_frame = ttk.Frame(self.current_frame, padding=16)
         module_frame.grid(row=1, column=0, sticky='nsew')
@@ -149,6 +153,40 @@ class MainApp:
 
         module_widget = self.load_module_widget(tile['module_name'], inner_frame)
         module_widget.grid(row=0, column=0, sticky='nsew')
+        module_widget.module_name = tile['module_name']
+
+        # Setup callbacks for "Historia" button
+        stories_dir = os.path.join('modules', 'stories', tile['module_name'])
+        if os.path.isdir(stories_dir):
+            def on_analysis_shown():
+                self.show_history_button(header_frame, module_widget)
+            def on_slideshow_ended():
+                if self.history_button:
+                    self.history_button.configure(text='Historia')
+            module_widget.on_analysis_shown_cb = on_analysis_shown
+            module_widget.on_slideshow_ended_cb = on_slideshow_ended
+
+    def show_history_button(self, header_frame, module_widget):
+        if self.history_button:
+            self.history_button.destroy()
+
+        self.history_button = ttk.Button(
+            header_frame,
+            text='Historia',
+            command=lambda: self.toggle_history(module_widget),
+            style='Back.TButton'
+        )
+        self.history_button.grid(row=0, column=1, sticky='e', padx=(0, 10))
+
+    def toggle_history(self, module_widget):
+        if getattr(module_widget, 'in_history_slideshow', False):
+            module_widget.hide_history_slideshow()
+            if self.history_button:
+                self.history_button.configure(text='Historia')
+        else:
+            module_widget.show_history_slideshow()
+            if self.history_button:
+                self.history_button.configure(text='Analiza')
 
     def load_module_widget(self, module_name, parent):
         try:

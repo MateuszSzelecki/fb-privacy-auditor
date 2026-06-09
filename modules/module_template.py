@@ -11,6 +11,108 @@ Każdy moduł powinien dziedziczyć po BaseModule i definiować:
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Dict, List, Optional
+import os
+import glob
+import re
+try:
+    from PIL import Image, ImageTk
+except ImportError:
+    Image = None
+    ImageTk = None
+
+
+class ImageSlideshowFrame(tk.Frame):
+    def __init__(self, parent, image_paths, on_finish=None, **kwargs):
+        super().__init__(parent, bg="white", **kwargs)
+        self.image_paths = image_paths
+        self.on_finish = on_finish
+        self.current_index = 0
+        
+        self.label = tk.Label(self, bg="white")
+        self.label.pack(fill="both", expand=True)
+        
+        self.label.bind("<Configure>", self.on_resize)
+        
+        self.pil_image = None
+        self.tk_image = None
+        
+        if not Image or not ImageTk:
+            self.label.config(text="Biblioteka Pillow (PIL) jest niedostępna.", fg="red", font=("Helvetica", 16))
+        elif not self.image_paths:
+            self.label.config(text="Brak zdjęć w folderze historii.", fg="black", font=("Helvetica", 16))
+        else:
+            self.load_image()
+        
+    def load_image(self):
+        if not self.image_paths or self.current_index >= len(self.image_paths):
+            return
+        path = self.image_paths[self.current_index]
+        try:
+            self.pil_image = Image.open(path)
+            self.display_image()
+        except Exception as e:
+            print(f"Error loading image {path}: {e}")
+            self.label.config(text=f"Błąd ładowania obrazu:\n{os.path.basename(path)}", fg="red", font=("Helvetica", 14))
+            
+    def display_image(self):
+        if not self.pil_image:
+            return
+            
+        # Get label dimensions
+        width = self.label.winfo_width()
+        height = self.label.winfo_height()
+        
+        # If dimensions are too small, use container dimensions or fallback
+        if width <= 10 or height <= 10:
+            width = self.winfo_width()
+            height = self.winfo_height()
+        if width <= 10 or height <= 10:
+            width = 800
+            height = 600
+            
+        # Calculate scale ratio to preserve aspect ratio
+        img_width, img_height = self.pil_image.size
+        ratio = min(width / img_width, height / img_height)
+        new_width = max(1, int(img_width * ratio))
+        new_height = max(1, int(img_height * ratio))
+        
+        # Resize image
+        resized_pil = self.pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        self.tk_image = ImageTk.PhotoImage(resized_pil)
+        
+        self.label.config(image=self.tk_image, text="") # clear text
+        
+    def on_resize(self, event):
+        self.display_image()
+        
+    def next_slide(self, loop=True):
+        if not self.image_paths:
+            return False
+        if self.current_index < len(self.image_paths) - 1:
+            self.current_index += 1
+            self.load_image()
+            return True
+        elif loop:
+            self.current_index = 0
+            self.load_image()
+            return True
+        else:
+            if self.on_finish:
+                self.on_finish()
+            return False
+
+    def prev_slide(self, loop=True):
+        if not self.image_paths:
+            return False
+        if self.current_index > 0:
+            self.current_index -= 1
+            self.load_image()
+            return True
+        elif loop:
+            self.current_index = len(self.image_paths) - 1
+            self.load_image()
+            return True
+        return False
 
 
 class BaseModule(ttk.Frame):
@@ -42,6 +144,8 @@ class BaseModule(ttk.Frame):
         super().__init__(parent, **kwargs)
         self.data = data or {}
         self.slide_index = 0
+        self.in_history_slideshow = False
+        self.slideshow_frame = None
 
         # Pobieramy slajdy zdefiniowane w podklasie
         raw_slides = list(self.slide_texts())
@@ -56,6 +160,8 @@ class BaseModule(ttk.Frame):
         self.analysis = self.analyze()
         self.build_ui()
         self.bind_all("<space>", self.on_space)
+        self.bind_all("<Left>", self.on_left)
+        self.bind_all("<Right>", self.on_right)
 
     def analyze(self) -> Dict[str, Any]:
         return {
@@ -426,6 +532,9 @@ class BaseModule(ttk.Frame):
             sub_lbl.pack(pady=(6, 0), anchor="center")
 
     def on_space(self, event: tk.Event) -> None:
+        if getattr(self, "in_history_slideshow", False):
+            return
+
         slides = self.slides
         if not slides:
             return
@@ -435,6 +544,14 @@ class BaseModule(ttk.Frame):
             self.slide_text.config(text=slides[self.slide_index])
         else:
             self.show_analysis()
+
+    def on_left(self, event: tk.Event) -> None:
+        if getattr(self, "in_history_slideshow", False) and self.slideshow_frame:
+            self.slideshow_frame.prev_slide(loop=True)
+
+    def on_right(self, event: tk.Event) -> None:
+        if getattr(self, "in_history_slideshow", False) and self.slideshow_frame:
+            self.slideshow_frame.next_slide(loop=True)
 
     def show_analysis(self) -> None:
         self.slide_container.grid_remove()
@@ -447,8 +564,53 @@ class BaseModule(ttk.Frame):
 
         self.result_frame.grid(row=1, column=0, sticky="nsew")
 
+        if hasattr(self, 'on_analysis_shown_cb') and self.on_analysis_shown_cb:
+            self.on_analysis_shown_cb()
+
+    def show_history_slideshow(self) -> None:
+        self.in_history_slideshow = True
+        self.result_frame.grid_remove()
+        
+        if self.slideshow_frame:
+            self.slideshow_frame.destroy()
+            
+        module_name = getattr(self, "module_name", None) or self.__class__.__module__.split('.')[-1]
+        stories_dir = os.path.join('modules', 'stories', module_name)
+        
+        extensions = ['*.png', '*.jpg', '*.jpeg', '*.gif']
+        image_paths = []
+        if os.path.isdir(stories_dir):
+            for ext in extensions:
+                image_paths.extend(glob.glob(os.path.join(stories_dir, ext)))
+                image_paths.extend(glob.glob(os.path.join(stories_dir, ext.upper())))
+                
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+            
+        image_paths = sorted(list(set(image_paths)), key=lambda x: natural_sort_key(os.path.basename(x)))
+        
+        self.slideshow_frame = ImageSlideshowFrame(
+            self, 
+            image_paths, 
+            on_finish=self.hide_history_slideshow
+        )
+        self.slideshow_frame.grid(row=1, column=0, sticky="nsew")
+        self.slideshow_frame.focus_set()
+
+    def hide_history_slideshow(self) -> None:
+        self.in_history_slideshow = False
+        if self.slideshow_frame:
+            self.slideshow_frame.destroy()
+            self.slideshow_frame = None
+        self.result_frame.grid(row=1, column=0, sticky="nsew")
+        
+        if hasattr(self, 'on_slideshow_ended_cb') and self.on_slideshow_ended_cb:
+            self.on_slideshow_ended_cb()
+
     def destroy(self) -> None:
         self.unbind_all("<space>")
+        self.unbind_all("<Left>")
+        self.unbind_all("<Right>")
         super().destroy()
 
     def run_console(self) -> None:
